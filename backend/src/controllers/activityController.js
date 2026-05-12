@@ -29,7 +29,7 @@ const getHomeActivities = async (req, res) => {
       FROM HoatDongDoan hd
       LEFT JOIN DanhSachDangKy dk ON hd.idHD   = dk.idHD
       LEFT JOIN Khoa           k  ON hd.maKhoa  = k.maKhoa
-      WHERE hd.trangThaiHD = 'Đang mở'
+      WHERE hd.trangThaiHD = 'Đang mở' AND hd.ngayToChuc > NOW()
     `;
     const params = [maDV];
 

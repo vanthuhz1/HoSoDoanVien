@@ -252,7 +252,7 @@ const getHoatDongDangMo = async (req, res) => {
     const pool = await getConnection();
     const [rows] = await pool.query(
       `SELECT idHD, tenHD, ngayToChuc, diaDiem, soLuongMAX, soLuongDaDK
-       FROM HoatDongDoan WHERE maKhoa=? AND trangThaiHD = 'Đang mở'
+       FROM HoatDongDoan WHERE maKhoa=? AND trangThaiHD = 'Đang mở' AND DATE(ngayToChuc) = CURDATE()
        ORDER BY ngayToChuc DESC`, [maKhoa]
     );
     return res.json({ success: true, data: rows });
