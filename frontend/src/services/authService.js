@@ -4,76 +4,73 @@ const API_BASE_URL = 'http://localhost:5000/api';
 
 const authAPI = axios.create({
   baseURL: `${API_BASE_URL}/auth`,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Interceptor để thêm token vào header
+// Tự động gắn token vào header
 authAPI.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Auth Service
 export const authService = {
-  // Login
-  login: async (tenNguoiDung, matKhau) => {
-    const response = await authAPI.post('/login', { tenNguoiDung, matKhau });
+  /**
+   * Đăng nhập bằng EMAIL + mật khẩu
+   * @param {string} email
+   * @param {string} matKhau
+   */
+  login: async (email, matKhau) => {
+    const response = await authAPI.post('/login', { email, matKhau });
     return response.data;
   },
 
-  // Forgot Password
-  forgotPassword: async (emailOrUsername) => {
-    const response = await authAPI.post('/forgot-password', { emailOrUsername });
+  /** Gửi OTP về email để đặt lại mật khẩu */
+  forgotPassword: async (email) => {
+    const response = await authAPI.post('/forgot-password', { email });
     return response.data;
   },
 
-  // Reset Password
+  /** Đặt lại mật khẩu bằng OTP (truyền email thật từ response bước 1) */
   resetPassword: async (email, otp, newPassword, confirmPassword) => {
-    const response = await authAPI.post('/reset-password', {
-      email,
-      otp,
-      newPassword,
-      confirmPassword,
-    });
+    const response = await authAPI.post('/reset-password', { email, otp, newPassword, confirmPassword });
     return response.data;
   },
 
-  // Verify Token
+  /** Kiểm tra token còn hạn không */
   verifyToken: async () => {
     const response = await authAPI.get('/verify');
     return response.data;
   },
 
-  // Logout
+  /** Đăng xuất */
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('role');
   },
 
-  // Get current user from localStorage
+  /** Lấy user hiện tại từ localStorage */
   getCurrentUser: () => {
     const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    try {
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
   },
 
-  // Get role
+  /** Lấy role (số) */
   getRole: () => {
-    return localStorage.getItem('role');
+    const user = authService.getCurrentUser();
+    return user ? parseInt(user.role) : null;
   },
 
-  // Check if authenticated
-  isAuthenticated: () => {
-    return !!localStorage.getItem('token');
-  },
+  /** Kiểm tra đã đăng nhập chưa */
+  isAuthenticated: () => !!localStorage.getItem('token'),
 };
 
 export default authService;

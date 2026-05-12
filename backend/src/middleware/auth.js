@@ -25,10 +25,13 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Middleware kiểm tra role
-const authorizeRole = (...allowedRoles) => {
+// Middleware kiểm tra role - nhận array hoặc spread
+const authorizeRole = (...args) => {
+  // Hỗ trợ cả authorizeRole([1,2]) và authorizeRole(1,2)
+  const allowedRoles = args.flat();
   return (req, res, next) => {
-    if (!allowedRoles.includes(req.user.IdVaiTro)) {
+    const userRole = parseInt(req.user.IdVaiTro);
+    if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền truy cập tài nguyên này'

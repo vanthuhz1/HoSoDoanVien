@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const routes = require('./routes');
@@ -15,6 +16,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api', routes);
+
+// Phục vụ các file tĩnh (đặc biệt là ảnh upload)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Root endpoint
 app.get('/', (req, res) => {

@@ -3,283 +3,295 @@ const jwt = require('jsonwebtoken');
 const { getConnection } = require('../config/database');
 const { sendResetPasswordEmail } = require('../utils/emailService');
 
-// Store OTP temporarily (in production, use Redis)
+// OTP store in-memory (production: dùng Redis)
 const otpStore = new Map();
 
-// 1. LOGIN
+// 4 vai trò theo DB mới
+const ROLE_NAMES = {
+  1: 'Admin',
+  2: 'Đoàn khoa',
+  3: 'Bí thư',
+  4: 'Đoàn viên'
+};
+
+// ============================================================
+// 1. LOGIN – đăng nhập bằng EMAIL + MẬT KHẨU
+// ============================================================
 const login = async (req, res) => {
   try {
-    const { tenNguoiDung, matKhau } = req.body;
+    const { email, matKhau } = req.body;
 
-    // Validation
-    if (!tenNguoiDung || !matKhau) {
+    if (!email || !matKhau) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng nhập đầy đủ thông tin'
+        message: 'Vui lòng nhập email và mật khẩu'
       });
     }
 
     const pool = await getConnection();
-    
-    // Check user exists
+
+    // Tìm tài khoản theo email (trường đăng nhập mới)
     const [users] = await pool.query(
-      'SELECT idUser, tenNguoiDung, matKhau, Email, IdVaiTro, trangThai FROM TaiKhoan WHERE tenNguoiDung = ?',
-      [tenNguoiDung]
+      `SELECT
+         tk.idUser,
+         tk.email,
+         tk.tenNguoiDung,
+         tk.matKhau,
+         tk.IdVaiTro,
+         tk.trangThai,
+         tk.maDV,
+         dv.hoTen,
+         dv.maChiDoan,
+         dv.chucVu,
+         dv.trangThaiSH,
+         vt.tenVaiTro
+       FROM TaiKhoan tk
+       LEFT JOIN DoanVien dv ON tk.maDV = dv.maDV
+       LEFT JOIN VaiTro   vt ON tk.IdVaiTro = vt.idVaiTro
+       WHERE tk.email = ?`,
+      [email.trim().toLowerCase()]
     );
 
     if (users.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'Tên đăng nhập hoặc mật khẩu không đúng'
+        message: 'Email hoặc mật khẩu không đúng'
       });
     }
 
     const user = users[0];
 
-    // Check account status
-    if (user.trangThai !== 1 && user.trangThai !== '1' && user.trangThai !== 'active') {
+    // Kiểm tra trạng thái tài khoản
+    if (user.trangThai !== 1 && user.trangThai !== '1') {
       return res.status(403).json({
         success: false,
-        message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên'
+        message: 'Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên'
       });
     }
 
-    // Compare password
+    // So sánh mật khẩu (bcrypt)
     const isPasswordValid = await bcrypt.compare(matKhau, user.matKhau);
-    
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Tên đăng nhập hoặc mật khẩu không đúng'
+        message: 'Email hoặc mật khẩu không đúng'
       });
     }
 
-    // Generate JWT token
+    // Tạo JWT token
     const token = jwt.sign(
-      { 
-        idUser: user.idUser, 
-        IdVaiTro: user.IdVaiTro,
-        tenNguoiDung: user.tenNguoiDung
+      {
+        idUser:       user.idUser,
+        IdVaiTro:     user.IdVaiTro,
+        email:        user.email,
+        tenNguoiDung: user.tenNguoiDung,
+        maDV:         user.maDV
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
     );
 
-    // Return success
-    res.json({
+    return res.json({
       success: true,
       message: 'Đăng nhập thành công',
       data: {
         token,
         user: {
-          idUser: user.idUser,
+          idUser:       user.idUser,
+          email:        user.email,
           tenNguoiDung: user.tenNguoiDung,
-          email: user.Email,
-          role: user.IdVaiTro,
-          roleName: user.IdVaiTro === 2 ? 'Bí thư chi đoàn' : 'Đoàn viên'
+          hoTen:        user.hoTen || user.tenNguoiDung,
+          maDV:         user.maDV,
+          maChiDoan:    user.maChiDoan,
+          chucVu:       user.chucVu,
+          trangThaiSH:  user.trangThaiSH,
+          role:         user.IdVaiTro,
+          roleName:     user.tenVaiTro || ROLE_NAMES[user.IdVaiTro] || 'Không xác định'
         }
       }
     });
 
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Lỗi server khi đăng nhập',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-// 2. FORGOT PASSWORD - Request OTP
+// ============================================================
+// 2. FORGOT PASSWORD – gửi OTP về email
+// ============================================================
 const forgotPassword = async (req, res) => {
   try {
-    const { emailOrUsername } = req.body;
+    const { email } = req.body;
 
-    if (!emailOrUsername) {
+    if (!email) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng nhập email hoặc tên đăng nhập'
+        message: 'Vui lòng nhập địa chỉ email'
       });
     }
 
     const pool = await getConnection();
-    
-    // Find user by email or username
+
     const [users] = await pool.query(
-      'SELECT idUser, tenNguoiDung, Email FROM TaiKhoan WHERE Email = ? OR tenNguoiDung = ?',
-      [emailOrUsername, emailOrUsername]
+      `SELECT tk.idUser, tk.email, tk.tenNguoiDung, dv.hoTen
+       FROM TaiKhoan tk
+       LEFT JOIN DoanVien dv ON tk.maDV = dv.maDV
+       WHERE tk.email = ?`,
+      [email.trim().toLowerCase()]
     );
 
     if (users.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy tài khoản với thông tin này'
+      // Bảo mật: không tiết lộ email có tồn tại hay không
+      return res.status(200).json({
+        success: true,
+        message: 'Nếu email tồn tại trong hệ thống, mã OTP đã được gửi'
       });
     }
 
     const user = users[0];
+    const displayName = user.hoTen || user.tenNguoiDung;
 
-    if (!user.Email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Tài khoản này chưa có email. Vui lòng liên hệ quản trị viên'
-      });
-    }
-
-    // Generate 6-digit OTP
+    // Tạo OTP 6 chữ số
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Store OTP with expiration (15 minutes)
-    otpStore.set(user.Email, {
+
+    // Lưu OTP (15 phút)
+    otpStore.set(user.email, {
       otp,
-      idUser: user.idUser,
-      expiresAt: Date.now() + 15 * 60 * 1000 // 15 minutes
+      idUser:    user.idUser,
+      expiresAt: Date.now() + 15 * 60 * 1000
     });
 
-    // Send email
-    const emailSent = await sendResetPasswordEmail(user.Email, otp, user.tenNguoiDung);
-
-    if (!emailSent) {
+    // Gửi email
+    const sent = await sendResetPasswordEmail(user.email, otp, displayName);
+    if (!sent) {
+      otpStore.delete(user.email);
       return res.status(500).json({
         success: false,
         message: 'Không thể gửi email. Vui lòng thử lại sau'
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Mã OTP đã được gửi đến email của bạn',
       data: {
-        email: user.Email.replace(/(.{2})(.*)(@.*)/, '$1***$3') // Mask email
+        maskedEmail: user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
+        realEmail:   user.email   // frontend cần để gọi resetPassword
       }
     });
 
   } catch (error) {
     console.error('Forgot password error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Lỗi server khi xử lý yêu cầu',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-// 3. RESET PASSWORD - Verify OTP and update password
+// ============================================================
+// 3. RESET PASSWORD – xác thực OTP và đổi mật khẩu
+// ============================================================
 const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword, confirmPassword } = req.body;
 
-    // Validation
     if (!email || !otp || !newPassword || !confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vui lòng nhập đầy đủ thông tin'
-      });
+      return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin' });
     }
-
     if (newPassword !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Mật khẩu xác nhận không khớp'
-      });
+      return res.status(400).json({ success: false, message: 'Mật khẩu xác nhận không khớp' });
     }
-
     if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Mật khẩu phải có ít nhất 6 ký tự'
-      });
+      return res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 6 ký tự' });
     }
 
-    // Check OTP
     const otpData = otpStore.get(email);
-
     if (!otpData) {
-      return res.status(400).json({
-        success: false,
-        message: 'Mã OTP không hợp lệ hoặc đã hết hạn'
-      });
+      return res.status(400).json({ success: false, message: 'Mã OTP không hợp lệ hoặc đã hết hạn' });
     }
-
-    if (otpData.otp !== otp) {
-      return res.status(400).json({
-        success: false,
-        message: 'Mã OTP không đúng'
-      });
-    }
-
     if (Date.now() > otpData.expiresAt) {
       otpStore.delete(email);
-      return res.status(400).json({
-        success: false,
-        message: 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới'
-      });
+      return res.status(400).json({ success: false, message: 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới' });
+    }
+    if (otpData.otp !== otp) {
+      return res.status(400).json({ success: false, message: 'Mã OTP không đúng' });
     }
 
-    // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update password in database
     const pool = await getConnection();
     await pool.query(
       'UPDATE TaiKhoan SET matKhau = ? WHERE idUser = ?',
       [hashedPassword, otpData.idUser]
     );
 
-    // Remove OTP from store
     otpStore.delete(email);
 
-    res.json({
-      success: true,
-      message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại'
-    });
+    return res.json({ success: true, message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại' });
 
   } catch (error) {
     console.error('Reset password error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Lỗi server khi đặt lại mật khẩu',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-// 4. VERIFY TOKEN (Optional - for protected routes)
+// ============================================================
+// 4. VERIFY TOKEN – kiểm tra token còn hạn
+// ============================================================
 const verifyToken = async (req, res) => {
   try {
-    // Token already verified by middleware
     const pool = await getConnection();
     const [users] = await pool.query(
-      'SELECT idUser, tenNguoiDung, Email, IdVaiTro FROM TaiKhoan WHERE idUser = ?',
+      `SELECT
+         tk.idUser, tk.email, tk.tenNguoiDung, tk.IdVaiTro, tk.maDV,
+         dv.hoTen, dv.maChiDoan, dv.chucVu, dv.trangThaiSH,
+         vt.tenVaiTro
+       FROM TaiKhoan tk
+       LEFT JOIN DoanVien dv ON tk.maDV = dv.maDV
+       LEFT JOIN VaiTro   vt ON tk.IdVaiTro = vt.idVaiTro
+       WHERE tk.idUser = ?`,
       [req.user.idUser]
     );
 
     if (users.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Người dùng không tồn tại'
-      });
+      return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
     }
 
-    res.json({
+    const u = users[0];
+    return res.json({
       success: true,
       data: {
-        user: users[0]
+        user: {
+          idUser:       u.idUser,
+          email:        u.email,
+          tenNguoiDung: u.tenNguoiDung,
+          hoTen:        u.hoTen || u.tenNguoiDung,
+          maDV:         u.maDV,
+          maChiDoan:    u.maChiDoan,
+          chucVu:       u.chucVu,
+          trangThaiSH:  u.trangThaiSH,
+          role:         u.IdVaiTro,
+          roleName:     u.tenVaiTro || ROLE_NAMES[u.IdVaiTro] || 'Không xác định'
+        }
       }
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Lỗi xác thực token',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-module.exports = {
-  login,
-  forgotPassword,
-  resetPassword,
-  verifyToken
-};
+module.exports = { login, forgotPassword, resetPassword, verifyToken };
