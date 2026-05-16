@@ -9,6 +9,8 @@ router.get('/dashboard',        ...guard, ctrl.getDashboard);
 router.get('/chart-data',       ...guard, ctrl.getChartData);
 router.get('/hoat-dong',        ...guard, ctrl.getHoatDong);
 router.post('/hoat-dong',       ...guard, ctrl.createHoatDong);
+router.put('/hoat-dong/:idHD',  ...guard, ctrl.updateHoatDong);
+router.delete('/hoat-dong/:idHD',...guard, ctrl.deleteHoatDong);
 router.get('/hoat-dong-dang-mo',...guard, ctrl.getHoatDongDangMo);
 router.get('/diem-danh/:idHD',  ...guard, ctrl.getDiemDanh);
 router.put('/check-in',         ...guard, ctrl.checkIn);

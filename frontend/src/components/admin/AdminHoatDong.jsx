@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useToast } from '../common/Toast';
 
 const API = 'http://localhost:5000/api/activities';
 const H = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -298,6 +299,7 @@ const AdminHoatDong = () => {
   const [mcView, setMcView] = useState(null);
   const [tcModal, setTC] = useState(null);
   const [search, setSearch] = useState('');
+  const toast = useToast();
 
   const fetchAll = useCallback(async () => {
     setL(true);
@@ -312,16 +314,32 @@ const AdminHoatDong = () => {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const duyet = async (hd) => {
-    await axios.put(`${API}/${hd.idHD}/trang-thai`, { trangThaiHD: 'Đang mở' }, { headers: H() });
-    fetchAll();
+    try {
+      await axios.put(`${API}/${hd.idHD}/trang-thai`, { trangThaiHD: 'Đang mở' }, { headers: H() });
+      toast.success('Duyệt hoạt động thành công');
+      fetchAll();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Lỗi khi duyệt');
+    }
   };
   const tuChoi = async (hd, lyDo) => {
-    await axios.put(`${API}/${hd.idHD}/trang-thai`, { trangThaiHD: 'Bị từ chối', lyDoTuChoi: lyDo }, { headers: H() });
-    setTC(null); fetchAll();
+    try {
+      await axios.put(`${API}/${hd.idHD}/trang-thai`, { trangThaiHD: 'Bị từ chối', lyDoTuChoi: lyDo }, { headers: H() });
+      toast.success('Đã từ chối hoạt động');
+      setTC(null); 
+      fetchAll();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Lỗi khi từ chối');
+    }
   };
   const doiTT = async (hd, tt) => {
-    await axios.put(`${API}/${hd.idHD}/trang-thai`, { trangThaiHD: tt }, { headers: H() });
-    fetchAll();
+    try {
+      await axios.put(`${API}/${hd.idHD}/trang-thai`, { trangThaiHD: tt }, { headers: H() });
+      toast.success(`Cập nhật trạng thái thành "${tt}"`);
+      fetchAll();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Lỗi cập nhật trạng thái');
+    }
   };
 
   const filtered = data.filter(d => d.tenHD?.toLowerCase().includes(search.toLowerCase()));

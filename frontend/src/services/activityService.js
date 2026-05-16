@@ -53,5 +53,12 @@ export const activityService = {
       headers: getAuthHeaders()
     });
     return response.data;
+  },
+
+  // Gửi khiếu nại hoạt động
+  submitKhieuNai: async (idHD, formData) => {
+    const headers = getAuthHeaders();
+    const response = await axios.post(`${API_URL}/${idHD}/khieu-nai`, formData, { headers });
+    return response.data;
   }
 };

@@ -3,7 +3,8 @@ const router = express.Router();
 const { 
   getMyFees, paymentFee, getInvoice,
   getDanhMuc, createDanhMuc, kichHoatDanhMuc, dongDanhMuc,
-  getThongKeDoanPhi, getTienDoDoanPhi, getChiTietChiDoan
+  getThongKeDoanPhi, getTienDoDoanPhi, getChiTietChiDoan,
+  deleteDanhMuc
 } = require('../controllers/doanPhiController');
 
 // GET /api/doan-phi/my-fees - Lấy danh sách đoàn phí của đoàn viên
@@ -20,6 +21,7 @@ router.get('/danh-muc', getDanhMuc);
 router.post('/danh-muc', createDanhMuc);
 router.put('/danh-muc/:id/kich-hoat', kichHoatDanhMuc);
 router.put('/danh-muc/:id/dong', dongDanhMuc);
+router.delete('/danh-muc/:id', deleteDanhMuc);
 router.get('/thong-ke', getThongKeDoanPhi);
 router.get('/tien-do', getTienDoDoanPhi);
 router.get('/chi-doan/:id', getChiTietChiDoan);

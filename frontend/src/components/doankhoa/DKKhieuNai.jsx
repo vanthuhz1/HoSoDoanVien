@@ -23,6 +23,7 @@ export default function DKKhieuNai() {
   const [loading, setLoading]   = useState(false);
   const [selected, setSelected] = useState(null);   // khiếu nại đang xem
   const [lyDo, setLyDo]         = useState('');
+  const [diemCongThem, setDiemCongThem] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast]       = useState(null);
   const [imgModal, setImgModal] = useState(null);
@@ -49,7 +50,7 @@ export default function DKKhieuNai() {
     setSubmitting(true);
     try {
       const { data } = await axios.put(
-        `${API}/khieu-nai/${selected.MaKhieuNai}/chap-nhan`, {},
+        `${API}/khieu-nai/${selected.MaKhieuNai}/chap-nhan`, { diemCongThem },
         { headers: H() }
       );
       showToast(data.message);
@@ -141,6 +142,7 @@ export default function DKKhieuNai() {
                   <th className="text-left px-5 py-3.5 text-xs font-bold text-gray-500 uppercase tracking-wider">Sinh viên</th>
                   <th className="text-left px-4 py-3.5 text-xs font-bold text-gray-500 uppercase tracking-wider">Chi đoàn</th>
                   <th className="text-left px-4 py-3.5 text-xs font-bold text-gray-500 uppercase tracking-wider">Hoạt động</th>
+                  <th className="text-left px-4 py-3.5 text-xs font-bold text-gray-500 uppercase tracking-wider">Loại khiếu nại</th>
                   <th className="text-left px-4 py-3.5 text-xs font-bold text-gray-500 uppercase tracking-wider">Nội dung khiếu nại</th>
                   <th className="text-left px-4 py-3.5 text-xs font-bold text-gray-500 uppercase tracking-wider">Minh chứng</th>
                   <th className="text-left px-4 py-3.5 text-xs font-bold text-gray-500 uppercase tracking-wider">Trạng thái</th>
@@ -165,16 +167,24 @@ export default function DKKhieuNai() {
                     <td className="px-4 py-4 max-w-[180px]">
                       <p className="font-semibold text-gray-700 truncate" title={kn.tenHD}>{kn.tenHD}</p>
                     </td>
+                    <td className="px-4 py-4">
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">
+                        {kn.loaiKhieuNai || '—'}
+                      </span>
+                    </td>
                     <td className="px-4 py-4 max-w-[220px]">
                       <p className="text-gray-600 text-xs truncate italic" title={kn.GhiChu}>{kn.GhiChu || '—'}</p>
                     </td>
                     <td className="px-4 py-4">
-                      {kn.LinkMinhChung ? (
-                        <button onClick={e => { e.stopPropagation(); setImgModal(kn.LinkMinhChung); }}
-                          className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors">
-                          <span className="material-symbols-outlined text-[14px]">image</span>Xem ảnh
-                        </button>
-                      ) : <span className="text-gray-400 text-xs">Không có</span>}
+                      <div className="flex flex-wrap gap-1">
+                        {kn.LinkMinhChung ? kn.LinkMinhChung.split(',').map((link, i) => (
+                          <button key={i} onClick={e => { e.stopPropagation(); setImgModal(link); }}
+                            className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors whitespace-nowrap">
+                            <span className="material-symbols-outlined text-[14px]">image</span>
+                            {kn.LinkMinhChung.split(',').length > 1 ? `Ảnh ${i+1}` : 'Xem ảnh'}
+                          </button>
+                        )) : <span className="text-gray-400 text-xs">Không có</span>}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_BADGE[kn.TrangThai] || 'bg-gray-100 text-gray-600'}`}>
@@ -248,6 +258,12 @@ export default function DKKhieuNai() {
                 <p className="text-xs text-blue-500 font-mono mt-0.5">ID: {selected.idHD}</p>
               </div>
 
+              {/* Loại khiếu nại */}
+              <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
+                <p className="text-[10px] font-bold text-purple-500 uppercase mb-1">Loại khiếu nại</p>
+                <p className="font-semibold text-purple-800">{selected.loaiKhieuNai || '—'}</p>
+              </div>
+
               {/* Ghi chú SV */}
               <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
                 <p className="text-[10px] font-bold text-amber-500 uppercase mb-1">Nội dung khiếu nại</p>
@@ -258,11 +274,15 @@ export default function DKKhieuNai() {
               {selected.LinkMinhChung && (
                 <div>
                   <p className="text-xs font-bold text-gray-500 uppercase mb-2">Minh chứng kèm theo</p>
-                  <a href={selected.LinkMinhChung} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-semibold bg-blue-50 hover:bg-blue-100 rounded-xl px-4 py-2.5 transition-colors w-full">
-                    <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-                    Mở ảnh minh chứng
-                  </a>
+                  <div className="flex gap-2">
+                    {selected.LinkMinhChung.split(',').map((link, i) => (
+                      <a key={i} href={link} target="_blank" rel="noreferrer"
+                        className="flex-1 flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-semibold bg-blue-50 hover:bg-blue-100 rounded-xl px-4 py-2.5 transition-colors">
+                        <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                        Mở ảnh {selected.LinkMinhChung.split(',').length > 1 ? i+1 : ''}
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -277,18 +297,34 @@ export default function DKKhieuNai() {
               {/* Action buttons – chỉ hiện khi chờ xử lý */}
               {selected.TrangThai === 'Chờ xử lý' ? (
                 <div className="border-t border-gray-100 pt-4 space-y-3">
-                  {/* Từ chối */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-600 uppercase">
-                      Lý do từ chối (bắt buộc nếu từ chối)
-                    </label>
-                    <textarea
-                      value={lyDo}
-                      onChange={e => setLyDo(e.target.value)}
-                      placeholder="VD: Ảnh minh chứng không hợp lệ, không thể xác minh..."
-                      rows={3}
-                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300 transition-all"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Cộng điểm bù */}
+                    {selected.loaiKhieuNai === 'Sai vai trò' && (
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-600 uppercase">
+                          Điểm cộng bù (nếu duyệt)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={diemCongThem}
+                          onChange={e => setDiemCongThem(e.target.value)}
+                          className="w-full px-3 py-2.5 text-sm font-bold text-green-600 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-green-300 transition-all"
+                        />
+                      </div>
+                    )}
+                    {/* Từ chối */}
+                    <div className={`space-y-2 ${selected.loaiKhieuNai !== 'Sai vai trò' ? 'md:col-span-2' : ''}`}>
+                      <label className="text-xs font-bold text-gray-600 uppercase">
+                        Lý do từ chối (bắt buộc)
+                      </label>
+                      <input
+                        value={lyDo}
+                        onChange={e => setLyDo(e.target.value)}
+                        placeholder="VD: Không hợp lệ..."
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300 transition-all"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex gap-3">
@@ -305,10 +341,15 @@ export default function DKKhieuNai() {
                   </div>
                 </div>
               ) : (
-                <div className="border-t border-gray-100 pt-4">
-                  <p className="text-center text-sm text-gray-400 font-medium">
+                <div className="border-t border-gray-100 pt-4 flex flex-col items-center">
+                  <p className="text-sm text-gray-400 font-medium mb-2">
                     Khiếu nại này đã được xử lý
                   </p>
+                  {selected.TrangThai === 'Đã xử lý' && selected.diemCongThem > 0 && (
+                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">
+                      Đã cộng bù: +{selected.diemCongThem} điểm
+                    </span>
+                  )}
                 </div>
               )}
             </div>

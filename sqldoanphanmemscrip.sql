@@ -128,7 +128,7 @@ CREATE TABLE ThongBao (
 
 -- 10. BẢNG HOẠT ĐỘNG ĐOÀN
 CREATE TABLE HoatDongDoan (
-    idHD         VARCHAR(20)  PRIMARY KEY,
+    idHD         VARCHAR(20)  PRIMARY KEY DEFAULT '0',
     tenHD        VARCHAR(200) NOT NULL,
     moTa         TEXT,
     ngayToChuc   DATETIME,
@@ -136,13 +136,28 @@ CREATE TABLE HoatDongDoan (
     soLuongMAX   INT,
     soLuongDaDK  INT          DEFAULT 0,
     diemHoatDong INT          DEFAULT 0,
-    trangThaiHD  ENUM('Chờ duyệt', 'Đang mở', 'Đã kết thúc', 'Từ chối'),
+    trangThaiHD  ENUM('Chờ duyệt', 'Sắp diễn ra', 'Đang mở', 'Đang diễn ra', 'Đã kết thúc', 'Từ chối', 'Bị từ chối'),
     donViToChuc  VARCHAR(50),
     maKhoa       VARCHAR(15)  NULL,
     Linkdinhkem  TEXT,
     MaQR_HienTai VARCHAR(255) NULL,
+    lyDoTuChoi   TEXT         NULL,
     FOREIGN KEY (maKhoa) REFERENCES Khoa(maKhoa) ON DELETE SET NULL
 );
+
+-- Trigger tự động tăng mã idHD theo cấu trúc HD001, HD002...
+DELIMITER //
+CREATE TRIGGER trg_auto_idHD
+BEFORE INSERT ON HoatDongDoan
+FOR EACH ROW
+BEGIN
+    DECLARE next_id INT;
+    IF NEW.idHD = '0' OR NEW.idHD IS NULL THEN
+        SELECT IFNULL(MAX(CAST(SUBSTRING(idHD, 3) AS UNSIGNED)), 0) + 1 INTO next_id FROM HoatDongDoan WHERE idHD LIKE 'HD%';
+        SET NEW.idHD = CONCAT('HD', LPAD(next_id, 3, '0'));
+    END IF;
+END; //
+DELIMITER ;
 
 -- 11. BẢNG DANH SÁCH ĐĂNG KÝ
 CREATE TABLE DanhSachDangKy (
@@ -165,6 +180,8 @@ CREATE TABLE KhieuNai (
     NguoiXuLy   INT          NULL,
     LinkMinhChung VARCHAR(255) NOT NULL,
     TrangThai    VARCHAR(50)  DEFAULT 'Chờ xử lý',   -- 'Chờ xử lý' | 'Đã xử lý' | 'Từ chối'
+    loaiKhieuNai ENUM('Vắng mặt', 'Sai vai trò') DEFAULT 'Vắng mặt',
+    diemCongThem INT          DEFAULT 0,
     NgayTao      DATETIME     DEFAULT CURRENT_TIMESTAMP,
     GhiChu       VARCHAR(500),
     FOREIGN KEY (maDV)       REFERENCES DoanVien(maDV),
@@ -451,46 +468,26 @@ INSERT INTO DoanPhi (_idMucDoanPhi, maDV, trangThai, NgayHetHan) VALUES
 (2, '2311500049', 'Đã nộp', '2022-05-31'),
 (1, '2311500050', 'Chưa nộp', '2021-05-31');
 
--- 9. HOẠT ĐỘNG ĐOÀN (50)
+-- 9. HOẠT ĐỘNG ĐOÀN (6)
 INSERT INTO HoatDongDoan (idHD, tenHD, moTa, ngayToChuc, diaDiem, soLuongMAX, diemHoatDong, trangThaiHD, donViToChuc, maKhoa) VALUES
-('HD001', 'Hội thi Sinh viên Tài năng lần 5', 'Đoàn trường/khoa tổ chức Hội thi Sinh viên Tài năng lần 5 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-09-18 08:00:00', 'Hội trường C', 144, 15, 'Từ chối', 'Đoàn khoa', 'DT'),
-('HD002', 'Lễ kỷ niệm ngày thành lập Đoàn 26/3 lần 4', 'Đoàn trường/khoa tổ chức Lễ kỷ niệm ngày thành lập Đoàn 26/3 lần 4 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-06-12 08:00:00', 'Hội trường A', 72, 7, 'Từ chối', 'Đoàn khoa', 'DT'),
-('HD003', 'Hỗ trợ đồng bào lũ lụt miền Trung lần 6', 'Đoàn trường/khoa tổ chức Hỗ trợ đồng bào lũ lụt miền Trung lần 6 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-12-09 08:00:00', 'Hội trường C', 81, 15, 'Đang mở', 'Đoàn trường', NULL),
-('HD004', 'Hỗ trợ đồng bào lũ lụt miền Trung', 'Đoàn trường/khoa tổ chức Hỗ trợ đồng bào lũ lụt miền Trung nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-05-12 08:00:00', 'Hội trường B', 99, 18, 'Đang mở', 'Đoàn khoa', 'KT'),
 ('HD005', 'Cuộc thi Olympic Tin học lần 1', 'Đoàn trường/khoa tổ chức Cuộc thi Olympic Tin học lần 1 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-07-10 08:00:00', 'Hội trường C', 109, 8, 'Chờ duyệt', 'Đoàn khoa', 'CNTT'),
-('HD006', 'Đêm nhạc Acoustic gây quỹ', 'Đoàn trường/khoa tổ chức Đêm nhạc Acoustic gây quỹ nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-05-20 08:00:00', 'Hội trường D', 124, 12, 'Đang mở', 'Đoàn khoa', 'NN'),
 ('HD007', 'Hiến máu tình nguyện đợt 1', 'Đoàn trường/khoa tổ chức Hiến máu tình nguyện đợt 1 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-02-03 08:00:00', 'Hội trường C', 126, 19, 'Chờ duyệt', 'Đoàn khoa', 'CNTT'),
-('HD008', 'Tọa đàm Thanh niên Khởi nghiệp', 'Đoàn trường/khoa tổ chức Tọa đàm Thanh niên Khởi nghiệp nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-10-22 08:00:00', 'Hội trường E', 142, 19, 'Từ chối', 'Đoàn trường', NULL),
-('HD009', 'Hội thi Sinh viên Tài năng', 'Đoàn trường/khoa tổ chức Hội thi Sinh viên Tài năng nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-03-28 08:00:00', 'Hội trường C', 51, 19, 'Chờ duyệt', 'Đoàn trường', NULL),
-('HD010', 'Hội thao Sinh viên cấp trường lần 3', 'Đoàn trường/khoa tổ chức Hội thao Sinh viên cấp trường lần 3 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-12-03 08:00:00', 'Hội trường A', 123, 5, 'Đã kết thúc', 'Đoàn khoa', 'KT'),
-('HD011', 'Hội thao Sinh viên cấp trường', 'Đoàn trường/khoa tổ chức Hội thao Sinh viên cấp trường nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-06-15 08:00:00', 'Hội trường C', 68, 10, 'Đang mở', 'Đoàn khoa', 'KT'),
-('HD012', 'Tiếp sức mùa thi lần 5', 'Đoàn trường/khoa tổ chức Tiếp sức mùa thi lần 5 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-07-20 08:00:00', 'Hội trường D', 139, 11, 'Đang mở', 'Đoàn khoa', 'CNTT'),
-('HD013', 'Tập huấn kỹ năng cán bộ Đoàn lần 1', 'Đoàn trường/khoa tổ chức Tập huấn kỹ năng cán bộ Đoàn lần 1 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-08-05 08:00:00', 'Hội trường A', 134, 17, 'Đang mở', 'Đoàn khoa', 'DT'),
-('HD014', 'Hiến máu tình nguyện đợt 1', 'Đoàn trường/khoa tổ chức Hiến máu tình nguyện đợt 1 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-06-16 08:00:00', 'Hội trường D', 74, 8, 'Từ chối', 'Đoàn khoa', 'CK'),
-('HD015', 'Dọn vệ sinh bãi biển Thanh Khê lần 10', 'Đoàn trường/khoa tổ chức Dọn vệ sinh bãi biển Thanh Khê lần 10 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-09-08 08:00:00', 'Hội trường A', 78, 9, 'Từ chối', 'Đoàn trường', NULL),
-('HD016', 'Hội thi Sinh viên Tài năng lần 8', 'Đoàn trường/khoa tổ chức Hội thi Sinh viên Tài năng lần 8 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-03-12 08:00:00', 'Hội trường C', 134, 17, 'Từ chối', 'Đoàn khoa', 'CNTT'),
-('HD017', 'Lễ kỷ niệm ngày thành lập Đoàn 26/3 lần 2', 'Đoàn trường/khoa tổ chức Lễ kỷ niệm ngày thành lập Đoàn 26/3 lần 2 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-01-23 08:00:00', 'Hội trường B', 108, 8, 'Từ chối', 'Đoàn khoa', 'DT'),
-('HD018', 'Dọn vệ sinh bãi biển Thanh Khê', 'Đoàn trường/khoa tổ chức Dọn vệ sinh bãi biển Thanh Khê nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-02-03 08:00:00', 'Hội trường C', 86, 10, 'Đã kết thúc', 'Đoàn trường', NULL),
 ('HD019', 'Cuộc thi Olympic Tin học', 'Đoàn trường/khoa tổ chức Cuộc thi Olympic Tin học nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-05-06 08:00:00', 'Hội trường B', 120, 17, 'Đã kết thúc', 'Đoàn trường', NULL),
-('HD020', 'Cuộc thi hùng biện Tiếng Anh', 'Đoàn trường/khoa tổ chức Cuộc thi hùng biện Tiếng Anh nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-04-21 08:00:00', 'Hội trường B', 121, 14, 'Chờ duyệt', 'Đoàn trường', NULL),
-('HD021', 'Tọa đàm Thanh niên Khởi nghiệp lần 2', 'Đoàn trường/khoa tổ chức Tọa đàm Thanh niên Khởi nghiệp lần 2 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-01-26 08:00:00', 'Hội trường A', 54, 16, 'Đã kết thúc', 'Đoàn khoa', 'CK'),
-('HD022', 'Hội diễn văn nghệ chào Tân sinh viên lần 9', 'Đoàn trường/khoa tổ chức Hội diễn văn nghệ chào Tân sinh viên lần 9 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-09-10 08:00:00', 'Hội trường C', 140, 14, 'Đang mở', 'Đoàn khoa', 'NN'),
-('HD023', 'Tọa đàm Thanh niên Khởi nghiệp lần 1', 'Đoàn trường/khoa tổ chức Tọa đàm Thanh niên Khởi nghiệp lần 1 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-07-27 08:00:00', 'Hội trường D', 149, 7, 'Từ chối', 'Đoàn trường', NULL),
-('HD024', 'Cuộc thi Rung chuông vàng lần 10', 'Đoàn trường/khoa tổ chức Cuộc thi Rung chuông vàng lần 10 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-11-12 08:00:00', 'Hội trường B', 135, 11, 'Đã kết thúc', 'Đoàn khoa', 'KT'),
-('HD025', 'Đêm nhạc Acoustic gây quỹ', 'Đoàn trường/khoa tổ chức Đêm nhạc Acoustic gây quỹ nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-07-13 08:00:00', 'Hội trường D', 84, 6, 'Đã kết thúc', 'Đoàn trường', NULL),
 ('HD026', 'Cuộc thi hùng biện Tiếng Anh lần 5', 'Đoàn trường/khoa tổ chức Cuộc thi hùng biện Tiếng Anh lần 5 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-04-13 08:00:00', 'Hội trường B', 115, 8, 'Từ chối', 'Đoàn khoa', 'CK'),
 ('HD027', 'Cuộc thi Sinh viên NCKH lần 2', 'Đoàn trường/khoa tổ chức Cuộc thi Sinh viên NCKH lần 2 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-11-05 08:00:00', 'Hội trường E', 145, 11, 'Chờ duyệt', 'Đoàn trường', NULL),
-('HD028', 'Đêm nhạc Acoustic gây quỹ', 'Đoàn trường/khoa tổ chức Đêm nhạc Acoustic gây quỹ nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-10-01 08:00:00', 'Hội trường E', 58, 9, 'Đang mở', 'Đoàn khoa', 'CNTT'),
-('HD029', 'Hội diễn văn nghệ chào Tân sinh viên', 'Đoàn trường/khoa tổ chức Hội diễn văn nghệ chào Tân sinh viên nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-08-01 08:00:00', 'Hội trường E', 117, 16, 'Từ chối', 'Đoàn khoa', 'CNTT'),
-('HD030', 'Hiến máu tình nguyện đợt 1 lần 9', 'Đoàn trường/khoa tổ chức Hiến máu tình nguyện đợt 1 lần 9 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-10-30 08:00:00', 'Hội trường B', 132, 6, 'Đã kết thúc', 'Đoàn trường', NULL),
-('HD031', 'Cuộc thi Sinh viên NCKH', 'Đoàn trường/khoa tổ chức Cuộc thi Sinh viên NCKH nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-09-05 08:00:00', 'Hội trường A', 54, 9, 'Đã kết thúc', 'Đoàn khoa', 'DT'),
-('HD032', 'Hỗ trợ đồng bào lũ lụt miền Trung lần 9', 'Đoàn trường/khoa tổ chức Hỗ trợ đồng bào lũ lụt miền Trung lần 9 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-09-17 08:00:00', 'Hội trường C', 80, 19, 'Từ chối', 'Đoàn khoa', 'KT'),
-('HD033', 'Hiến máu tình nguyện đợt 1', 'Đoàn trường/khoa tổ chức Hiến máu tình nguyện đợt 1 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-11-15 08:00:00', 'Hội trường E', 129, 15, 'Đang mở', 'Đoàn trường', NULL),
-('HD034', 'Ngày hội giao lưu văn hóa quốc tế', 'Đoàn trường/khoa tổ chức Ngày hội giao lưu văn hóa quốc tế nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-12-25 08:00:00', 'Hội trường E', 127, 5, 'Đang mở', 'Đoàn khoa', 'CNTT');
+('HD034', 'Ngày hội giao lưu văn hóa quốc tế', 'Đoàn trường/khoa tổ chức Ngày hội giao lưu văn hóa quốc tế nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-12-25 08:00:00', 'Hội trường E', 127, 5, 'Đang mở', 'Đoàn khoa', 'CNTT'),
+('HD035', 'Hoạt động test Khoa CNTT đang mở (Hôm nay)', 'Mô tả test', '2026-05-16 08:00:00', 'Hội trường A', 100, 10, 'Đang mở', 'Đoàn khoa', 'CNTT'),
+('HD036', 'Hoạt động test Đoàn trường đang mở (Hôm nay)', 'Mô tả test', '2026-05-16 09:00:00', 'Hội trường B', 100, 10, 'Đang mở', 'Đoàn trường', NULL),
+('HD037', 'Hoạt động test Khoa KT đang mở (Hôm nay)', 'Mô tả test', '2026-05-16 10:00:00', 'Hội trường C', 100, 10, 'Đang mở', 'Đoàn khoa', 'KT'),
+('HD038', 'Hoạt động test Khoa CNTT đang diễn ra (Hôm nay)', 'Mô tả test', '2026-05-16 11:00:00', 'Hội trường D', 100, 10, 'Đang diễn ra', 'Đoàn khoa', 'CNTT'),
+('HD039', 'Hoạt động test khiếu nại 1 (Bị vắng mặt)', 'Hoạt động đã kết thúc trong vòng 7 ngày', '2026-05-14 08:00:00', 'Hội trường A', 100, 5, 'Đã kết thúc', 'Đoàn khoa', 'CNTT'),
+('HD040', 'Hoạt động test khiếu nại 2 (Đã tham gia)', 'Hoạt động đã kết thúc trong vòng 7 ngày', '2026-05-15 09:00:00', 'Hội trường B', 100, 5, 'Đã kết thúc', 'Đoàn trường', NULL);
 
 -- 10. DANH SÁCH ĐĂNG KÝ (50)
 INSERT IGNORE INTO DanhSachDangKy (maDV, idHD, trangThaiThamGia, trangThaiCongDiem) VALUES
-('2311500048', 'HD034', 'Đã Đăng Ký', 'Chưa cộng');
+('2311500048', 'HD034', 'Đã Đăng Ký', 'Chưa cộng'),
+('2311500050', 'HD039', 'Vắng mặt', 'Chưa cộng'),
+('2311500050', 'HD040', 'Đã tham gia', 'Đã tích lũy');
 
 
 -- 11. SỔ ĐOÀN (50)
@@ -600,9 +597,20 @@ INSERT INTO TieuSu (maDV, tuThoiGian, denThoiGian, donViCongTac, chucVu) VALUES
 ('2311500050', '2018-03-13', NULL, 'Trường Đại học SPKT', 'Đoàn viên');
 
 -- 13. KHIẾU NẠI (5)
-INSERT INTO KhieuNai (maDV, idHD, LinkMinhChung, TrangThai, GhiChu) VALUES
-('2311500040', 'HD026', 'https://drive.google.com/file_kn_0', 'Từ chối', 'Điểm hoạt động chưa cập nhật lên hệ thống.'),
-('2311500027', 'HD007', 'https://drive.google.com/file_kn_1', 'Chờ xử lý', 'Điểm hoạt động chưa cập nhật lên hệ thống.'),
-('2211500009', 'HD019', 'https://drive.google.com/file_kn_2', 'Đã xử lý', 'Minh chứng đã cập nhật lại rõ nét hơn.'),
-('2311500019', 'HD005', 'https://drive.google.com/file_kn_3', 'Từ chối', 'Điểm hoạt động chưa cập nhật lên hệ thống.'),
-('2311500017', 'HD027', 'https://drive.google.com/file_kn_4', 'Đã xử lý', 'Tôi đã quét mã nhưng chưa được cộng điểm.');
+
+-- ============================================================
+-- BƯỚC 4: TẠO EVENT TỰ ĐỘNG CẬP NHẬT TRẠNG THÁI HOẠT ĐỘNG
+-- ============================================================
+SET GLOBAL event_scheduler = ON;
+
+DELIMITER //
+CREATE EVENT IF NOT EXISTS evt_update_hoat_dong_dang_dien_ra
+ON SCHEDULE EVERY 1 MINUTE
+DO
+BEGIN
+    UPDATE HoatDongDoan 
+    SET trangThaiHD = 'Đang diễn ra' 
+    WHERE trangThaiHD = 'Đang mở' AND DATE(ngayToChuc) = CURDATE();
+END //
+DELIMITER ;
+

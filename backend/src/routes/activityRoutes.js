@@ -3,13 +3,27 @@ const router = express.Router();
 const {
   getHomeActivities, getAllActivities, getActivityById, createActivity,
   updateTrangThai, getDangKy, duyetMinhChung, getMyActivities,
-  registerActivity, unregisterActivity
+  registerActivity, unregisterActivity, submitKhieuNai
 } = require('../controllers/activityController');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const auth = authenticateToken;
 const admin = [authenticateToken, authorizeRole([1])];
 const studentOrSecretary = [authenticateToken, authorizeRole([3, 4])]; // Bí thư và Đoàn viên
+
+const multer = require('multer');
+const path = require('path');
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../../uploads/'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'minhchung-' + req.user.maDV + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
 
 // ─── Routes cố định phải đặt TRƯỚC route dynamic /:id ───────────────────────
 
@@ -41,6 +55,7 @@ router.get('/:id', (req, res, next) => {
 // Protected routes cho sinh viên/bí thư
 router.post('/:id/register',          ...studentOrSecretary, registerActivity);
 router.delete('/:id/unregister',      ...studentOrSecretary, unregisterActivity);
+router.post('/:id/khieu-nai',         ...studentOrSecretary, upload.array('minhChung', 2), submitKhieuNai);
 
 // Protected routes cho admin
 router.post('/',                      ...admin, createActivity);

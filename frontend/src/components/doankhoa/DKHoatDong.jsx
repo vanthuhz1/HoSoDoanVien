@@ -22,6 +22,14 @@ const Badge = ({ tt }) => {
   );
 };
 
+const FI = ({ label, name, type='text', placeholder='', value, onChange }) => (
+  <div>
+    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">{label}</label>
+    <input type={type} value={value||''} onChange={e=>onChange(name,e.target.value)} placeholder={placeholder}
+      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#004581] focus:ring-2 focus:ring-[#004581]/10 bg-gray-50 focus:bg-white transition-all" />
+  </div>
+);
+
 const DKHoatDong = () => {
   const [tab, setTab]       = useState('list');
   const [data, setData]     = useState([]);
@@ -30,6 +38,7 @@ const DKHoatDong = () => {
   const [form, setForm]     = useState({
     tenHD:'', moTa:'', ngayToChuc:'', diaDiem:'', soLuongMAX:50, diemHoatDong:0, Linkdinhkem:''
   });
+  const [editingId, setEditingId] = useState(null);
   const [submitting, setSub] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -43,25 +52,51 @@ const DKHoatDong = () => {
   const submit = async e => {
     e.preventDefault();
     if (!form.tenHD || !form.ngayToChuc) { setMsg('Vui lòng điền đủ tên và ngày'); return; }
+    if (new Date(form.ngayToChuc) < new Date()) { setMsg('❌ Ngày tổ chức không được ở trong quá khứ'); return; }
     setSub(true);
     try {
-      await axios.post(`${API}/hoat-dong`, form, { headers: H() });
-      setMsg('✅ Đã gửi đề xuất lên Đoàn trường thành công!');
+      if (editingId) {
+        await axios.put(`${API}/hoat-dong/${editingId}`, form, { headers: H() });
+        setMsg('✅ Đã cập nhật hoạt động thành công!');
+      } else {
+        await axios.post(`${API}/hoat-dong`, form, { headers: H() });
+        setMsg('✅ Đã gửi đề xuất lên Đoàn trường thành công!');
+      }
       setForm({ tenHD:'', moTa:'', ngayToChuc:'', diaDiem:'', soLuongMAX:50, diemHoatDong:0, Linkdinhkem:'' });
+      setEditingId(null);
       setTab('list'); fetchData();
     } catch(e) { setMsg('❌ ' + (e.response?.data?.message||'Lỗi')); }
     finally { setSub(false); }
   };
 
+  const handleEdit = (hd) => {
+    const formattedDate = hd.ngayToChuc ? new Date(new Date(hd.ngayToChuc).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16) : '';
+    setForm({
+      tenHD: hd.tenHD,
+      moTa: hd.moTa || '',
+      ngayToChuc: formattedDate,
+      diaDiem: hd.diaDiem || '',
+      soLuongMAX: hd.soLuongMAX || 50,
+      diemHoatDong: hd.diemHoatDong || 0,
+      Linkdinhkem: hd.Linkdinhkem || ''
+    });
+    setEditingId(hd.idHD);
+    setTab('form');
+  };
+
+  const handleDelete = async (idHD) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa hoạt động này?')) return;
+    try {
+      await axios.delete(`${API}/hoat-dong/${idHD}`, { headers: H() });
+      setMsg('✅ Đã xóa hoạt động thành công!');
+      fetchData();
+    } catch(e) {
+      setMsg('❌ ' + (e.response?.data?.message||'Lỗi xóa hoạt động'));
+    }
+  };
+
   const set = (k,v) => setForm(p => ({...p,[k]:v}));
 
-  const FI = ({ label, name, type='text', placeholder='' }) => (
-    <div>
-      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">{label}</label>
-      <input type={type} value={form[name]||''} onChange={e=>set(name,e.target.value)} placeholder={placeholder}
-        className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#004581] focus:ring-2 focus:ring-[#004581]/10 bg-gray-50 focus:bg-white transition-all" />
-    </div>
-  );
 
   return (
     <div className="flex flex-col gap-5" style={{fontFamily:"'Inter',sans-serif"}}>
@@ -79,8 +114,14 @@ const DKHoatDong = () => {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-        {[{k:'list',l:'Danh sách',i:'format_list_bulleted'},{k:'form',l:'Đề xuất hoạt động',i:'add_circle'}].map(t=>(
-          <button key={t.k} onClick={()=>setTab(t.k)}
+        {[{k:'list',l:'Danh sách',i:'format_list_bulleted'},{k:'form',l:editingId ? 'Cập nhật hoạt động' : 'Đề xuất hoạt động',i:editingId?'edit':'add_circle'}].map(t=>(
+          <button key={t.k} onClick={()=>{
+            if (t.k === 'list' && tab !== 'list') {
+              setEditingId(null);
+              setForm({ tenHD:'', moTa:'', ngayToChuc:'', diaDiem:'', soLuongMAX:50, diemHoatDong:0, Linkdinhkem:'' });
+            }
+            setTab(t.k);
+          }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
               tab===t.k ? 'bg-white text-[#004581] shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}>
@@ -100,7 +141,7 @@ const DKHoatDong = () => {
           <table className="w-full text-sm text-left">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
-                {['Tên hoạt động','Ngày','Địa điểm','SL tối đa','SL ĐK','Trạng thái','Link'].map(h=>(
+                {['Tên hoạt động','Ngày','Địa điểm','SL tối đa','SL ĐK','Trạng thái','Link','Thao tác'].map(h=>(
                   <th key={h} className="px-5 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
                 ))}
               </tr>
@@ -136,6 +177,18 @@ const DKHoatDong = () => {
                       </a>
                     ) : <span className="text-gray-300 text-xs">—</span>}
                   </td>
+                  <td className="px-5 py-4 text-center">
+                    {hd.trangThaiHD === 'Chờ duyệt' && (
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => handleEdit(hd)} className="text-[#004581] hover:text-[#0066bb] bg-blue-50 p-1.5 rounded-lg transition-colors" title="Sửa">
+                          <span className="material-symbols-outlined text-[16px]">edit</span>
+                        </button>
+                        <button onClick={() => handleDelete(hd.idHD)} className="text-red-500 hover:text-red-600 bg-red-50 p-1.5 rounded-lg transition-colors" title="Xóa">
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -147,21 +200,21 @@ const DKHoatDong = () => {
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
             <div className="w-10 h-10 rounded-xl bg-[#d4e3ff] flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#004581] fill">add_circle</span>
+              <span className="material-symbols-outlined text-[#004581] fill">{editingId ? 'edit' : 'add_circle'}</span>
             </div>
             <div>
-              <h3 className="font-bold text-gray-900">Đề xuất Hoạt động mới</h3>
+              <h3 className="font-bold text-gray-900">{editingId ? 'Cập nhật Hoạt động' : 'Đề xuất Hoạt động mới'}</h3>
               <p className="text-xs text-gray-400 mt-0.5">Sau khi gửi, Admin sẽ xem xét và phê duyệt</p>
             </div>
           </div>
 
           <form onSubmit={submit} className="grid grid-cols-2 gap-4">
-            <div className="col-span-2"><FI label="Tên hoạt động *" name="tenHD" placeholder="VD: Hội thảo kỹ năng mềm 2025" /></div>
-            <FI label="Ngày tổ chức *" name="ngayToChuc" type="datetime-local" />
-            <FI label="Địa điểm" name="diaDiem" placeholder="VD: Hội trường A" />
-            <FI label="Số lượng tối đa" name="soLuongMAX" type="number" />
-            <FI label="Điểm hoạt động" name="diemHoatDong" type="number" />
-            <div className="col-span-2"><FI label="Link đính kèm (minh chứng/kế hoạch)" name="Linkdinhkem" placeholder="https://drive.google.com/..." /></div>
+            <div className="col-span-2"><FI label="Tên hoạt động *" name="tenHD" placeholder="VD: Hội thảo kỹ năng mềm 2025" value={form.tenHD} onChange={set} /></div>
+            <FI label="Ngày tổ chức *" name="ngayToChuc" type="datetime-local" value={form.ngayToChuc} onChange={set} />
+            <FI label="Địa điểm" name="diaDiem" placeholder="VD: Hội trường A" value={form.diaDiem} onChange={set} />
+            <FI label="Số lượng tối đa" name="soLuongMAX" type="number" value={form.soLuongMAX} onChange={set} />
+            <FI label="Điểm hoạt động" name="diemHoatDong" type="number" value={form.diemHoatDong} onChange={set} />
+            <div className="col-span-2"><FI label="Link đính kèm (minh chứng/kế hoạch)" name="Linkdinhkem" placeholder="https://drive.google.com/..." value={form.Linkdinhkem} onChange={set} /></div>
             <div className="col-span-2">
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Mô tả</label>
               <textarea value={form.moTa||''} onChange={e=>set('moTa',e.target.value)} rows={3}
@@ -173,8 +226,8 @@ const DKHoatDong = () => {
                 className="px-5 py-2.5 border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all">Hủy</button>
               <button type="submit" disabled={submitting}
                 className="px-6 py-2.5 bg-gradient-to-r from-[#004581] to-[#0066bb] text-white rounded-xl text-sm font-bold hover:shadow-lg disabled:opacity-50 flex items-center gap-2 transition-all">
-                <span className="material-symbols-outlined text-sm fill">send</span>
-                {submitting ? 'Đang gửi...' : 'Gửi Đoàn trường duyệt'}
+                <span className="material-symbols-outlined text-sm fill">{editingId ? 'save' : 'send'}</span>
+                {submitting ? 'Đang xử lý...' : (editingId ? 'Lưu thay đổi' : 'Gửi Đoàn trường duyệt')}
               </button>
             </div>
           </form>

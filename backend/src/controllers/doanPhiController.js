@@ -308,6 +308,48 @@ const getChiTietChiDoan = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// DELETE /api/doan-phi/danh-muc/:id
+const deleteDanhMuc = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getConnection();
+
+    // 1. Kiểm tra đợt thu tồn tại
+    const [[dm]] = await pool.query(
+      'SELECT _idMucDoanPhi, namHoc FROM DanhMucDoanPhi WHERE _idMucDoanPhi = ?',
+      [id]
+    );
+    if (!dm) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đợt thu' });
+    }
+
+    // 2. Kiểm tra xem có sinh viên nào đã nộp không
+    const [[paid]] = await pool.query(
+      `SELECT COUNT(*) AS soLuong FROM DoanPhi
+       WHERE _idMucDoanPhi = ? AND trangThai = 'Đã nộp'`,
+      [id]
+    );
+
+    if (paid.soLuong > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể xóa đợt thu "${dm.namHoc}" vì đã có ${paid.soLuong} sinh viên nộp tiền. Chỉ được xóa khi 100% sinh viên chưa nộp.`
+      });
+    }
+
+    // 3. Xóa các bản ghi DoanPhi trước (nếu có – trạng thái 'Chưa nộp')
+    await pool.query('DELETE FROM DoanPhi WHERE _idMucDoanPhi = ?', [id]);
+
+    // 4. Xóa DanhMucDoanPhi
+    await pool.query('DELETE FROM DanhMucDoanPhi WHERE _idMucDoanPhi = ?', [id]);
+
+    return res.status(200).json({ success: true, message: `Đã xóa đợt thu "${dm.namHoc}" thành công` });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getMyFees,
   paymentFee,
@@ -318,5 +360,6 @@ module.exports = {
   dongDanhMuc,
   getThongKeDoanPhi,
   getTienDoDoanPhi,
-  getChiTietChiDoan
+  getChiTietChiDoan,
+  deleteDanhMuc
 };

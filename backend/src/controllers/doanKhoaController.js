@@ -115,6 +115,7 @@ const createHoatDong = async (req, res) => {
     if (!maKhoa) return res.status(403).json({ success: false, message: 'Không xác định được khoa' });
     const { tenHD, moTa, ngayToChuc, diaDiem, soLuongMAX, diemHoatDong, Linkdinhkem } = req.body;
     if (!tenHD || !ngayToChuc) return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc' });
+    if (new Date(ngayToChuc) < new Date()) return res.status(400).json({ success: false, message: 'Ngày tổ chức không được ở trong quá khứ' });
 
     const pool = await getConnection();
     const [[khoaInfo]] = await pool.query('SELECT tenKhoa FROM Khoa WHERE maKhoa=?', [maKhoa]);
@@ -128,6 +129,48 @@ const createHoatDong = async (req, res) => {
        `Đoàn khoa ${khoaInfo?.tenKhoa||maKhoa}`, maKhoa, Linkdinhkem||null]
     );
     return res.status(201).json({ success: true, message: 'Đã gửi đề xuất hoạt động lên Đoàn trường', idHD });
+  } catch(err) { return res.status(500).json({ success: false, message: err.message }); }
+};
+
+// PUT /api/doan-khoa/hoat-dong/:idHD – Cập nhật hoạt động
+const updateHoatDong = async (req, res) => {
+  try {
+    const maKhoa = await getKhoaFromUser(req.user.idUser);
+    if (!maKhoa) return res.status(403).json({ success: false, message: 'Không xác định được khoa' });
+    const { idHD } = req.params;
+    const { tenHD, moTa, ngayToChuc, diaDiem, soLuongMAX, diemHoatDong, Linkdinhkem } = req.body;
+    
+    if (!tenHD || !ngayToChuc) return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc' });
+    if (new Date(ngayToChuc) < new Date()) return res.status(400).json({ success: false, message: 'Ngày tổ chức không được ở trong quá khứ' });
+
+    const pool = await getConnection();
+    const [[hd]] = await pool.query('SELECT trangThaiHD FROM HoatDongDoan WHERE idHD=? AND maKhoa=?', [idHD, maKhoa]);
+    if (!hd) return res.status(404).json({ success: false, message: 'Không tìm thấy hoạt động hoặc bạn không có quyền' });
+    if (hd.trangThaiHD !== 'Chờ duyệt') return res.status(400).json({ success: false, message: 'Chỉ được sửa khi hoạt động đang chờ duyệt' });
+
+    await pool.query(
+      `UPDATE HoatDongDoan SET tenHD=?, moTa=?, ngayToChuc=?, diaDiem=?, soLuongMAX=?, diemHoatDong=?, Linkdinhkem=?
+       WHERE idHD=?`,
+      [tenHD, moTa||'', ngayToChuc, diaDiem||'', soLuongMAX||50, diemHoatDong||0, Linkdinhkem||null, idHD]
+    );
+    return res.json({ success: true, message: 'Cập nhật hoạt động thành công' });
+  } catch(err) { return res.status(500).json({ success: false, message: err.message }); }
+};
+
+// DELETE /api/doan-khoa/hoat-dong/:idHD – Xóa hoạt động
+const deleteHoatDong = async (req, res) => {
+  try {
+    const maKhoa = await getKhoaFromUser(req.user.idUser);
+    if (!maKhoa) return res.status(403).json({ success: false, message: 'Không xác định được khoa' });
+    const { idHD } = req.params;
+
+    const pool = await getConnection();
+    const [[hd]] = await pool.query('SELECT trangThaiHD FROM HoatDongDoan WHERE idHD=? AND maKhoa=?', [idHD, maKhoa]);
+    if (!hd) return res.status(404).json({ success: false, message: 'Không tìm thấy hoạt động hoặc bạn không có quyền' });
+    if (hd.trangThaiHD !== 'Chờ duyệt') return res.status(400).json({ success: false, message: 'Chỉ được xóa khi hoạt động đang chờ duyệt' });
+
+    await pool.query('DELETE FROM HoatDongDoan WHERE idHD=?', [idHD]);
+    return res.json({ success: true, message: 'Xóa hoạt động thành công' });
   } catch(err) { return res.status(500).json({ success: false, message: err.message }); }
 };
 
@@ -252,7 +295,9 @@ const getHoatDongDangMo = async (req, res) => {
     const pool = await getConnection();
     const [rows] = await pool.query(
       `SELECT idHD, tenHD, ngayToChuc, diaDiem, soLuongMAX, soLuongDaDK
-       FROM HoatDongDoan WHERE maKhoa=? AND trangThaiHD = 'Đang mở' AND DATE(ngayToChuc) = CURDATE()
+       FROM HoatDongDoan 
+       WHERE (maKhoa = ? OR maKhoa IS NULL) 
+         AND trangThaiHD = 'Đang diễn ra'
        ORDER BY ngayToChuc DESC`, [maKhoa]
     );
     return res.json({ success: true, data: rows });
@@ -339,6 +384,7 @@ const chapNhanKhieuNai = async (req, res) => {
     const maKhoa = await getKhoaFromUser(req.user.idUser);
     if (!maKhoa) return res.status(403).json({ success: false, message: 'Không xác định được khoa' });
     const { id } = req.params;
+    const diemCongThem = Number(req.body.diemCongThem) || 0;
     const pool = await getConnection();
     // Lấy thông tin khiếu nại + kiểm tra khoa
     const [[kn]] = await pool.query(
@@ -372,8 +418,8 @@ const chapNhanKhieuNai = async (req, res) => {
 
     // Cập nhật trạng thái khiếu nại
     await pool.query(
-      `UPDATE KhieuNai SET TrangThai='Đã xử lý', NguoiXuLy=?, GhiChu='Đã chấp nhận – cộng bù điểm hoạt động'
-       WHERE MaKhieuNai=?`, [req.user.idUser, id]
+      `UPDATE KhieuNai SET TrangThai='Đã xử lý', NguoiXuLy=?, diemCongThem=?, GhiChu='Đã chấp nhận – cộng bù điểm hoạt động'
+       WHERE MaKhieuNai=?`, [req.user.idUser, diemCongThem, id]
     );
     return res.json({ success: true, message: 'Đã chấp nhận khiếu nại và cộng bù điểm cho sinh viên' });
   } catch(err) { return res.status(500).json({ success: false, message: err.message }); }
@@ -405,4 +451,4 @@ const tuChoiKhieuNai = async (req, res) => {
   } catch(err) { return res.status(500).json({ success: false, message: err.message }); }
 };
 
-module.exports = { getDashboard, getHoatDong, createHoatDong, getDiemDanh, checkIn, getChiDoan, updateChucVu, getTienDo, getHoatDongDangMo, getChartData, getKhieuNai, chapNhanKhieuNai, tuChoiKhieuNai };
+module.exports = { getDashboard, getHoatDong, createHoatDong, updateHoatDong, deleteHoatDong, getDiemDanh, checkIn, getChiDoan, updateChucVu, getTienDo, getHoatDongDangMo, getChartData, getKhieuNai, chapNhanKhieuNai, tuChoiKhieuNai };

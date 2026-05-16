@@ -258,6 +258,21 @@ const AdminDoanPhi = () => {
     } catch (e) { console.error(e); }
   };
 
+  const doXoa = async (dm) => {
+    const confirmed = await toast.confirm(
+      `Bạn có chắc muốn xóa đợt thu "${dm.namHoc}"?\nChỉ được xóa khi 100% sinh viên chưa nộp tiền.`
+    );
+    if (!confirmed) return;
+    setActing(dm._idMucDoanPhi);
+    try {
+      const r = await axios.delete(`${API}/danh-muc/${dm._idMucDoanPhi}`, { headers: H() });
+      toast.success(r.data.message || 'Đã xóa đợt thu thành công!');
+      fetchDanhMuc();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Lỗi khi xóa đợt thu');
+    } finally { setActing(null); }
+  };
+
   if (activeMuc) return <ChiDoanView mucPhi={activeMuc} onBack={() => setActiveMuc(null)} />;
 
   return (
@@ -350,6 +365,14 @@ const AdminDoanPhi = () => {
                       )}
                       <button onClick={() => loadThongKe(dm)} title="Thống kê" className="text-gray-400 hover:text-[#004581] p-1">
                         <span className="material-symbols-outlined text-sm">analytics</span>
+                      </button>
+                      <button
+                        onClick={() => doXoa(dm)}
+                        disabled={acting === dm._idMucDoanPhi}
+                        title="Xóa đợt thu"
+                        className="p-1 text-gray-400 hover:text-red-500 disabled:opacity-40 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
                       </button>
                     </div>
                   </td>
