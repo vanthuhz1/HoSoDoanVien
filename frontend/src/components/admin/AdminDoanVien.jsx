@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  return dateString.split('T')[0]; // Biến "2000-04-27T17:00..." thành "2000-04-27" sạch sẽ
+};
+const API_URL = 'http://localhost:5001/api';
 const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
 const BADGE = {
@@ -35,13 +39,24 @@ const F = ({ label, name, type='text', required, form, setForm, children }) => (
 /* ── MODAL ── */
 const Modal = ({ dv, onClose, onSaved, chiDoans }) => {
   const isEdit = !!dv;
-  const [form, setForm] = useState(dv || {
-    maDV:'', hoTen:'', ngaySinh:'', gioiTinh:'Nam', danToc:'Kinh', tonGiao:'Không',
-    SDT:'', maChiDoan:'', ngayVaoDoan:'', noiVaoDoan:'', trangThaiSH:'Đang sinh hoạt',
-    chucVu:'Đoàn viên', cccd:'', queQuan:'', diaChiThuongTru:''
-  });
+  
+  // 💡 TỰ ĐỘNG LÀM SẠCH NGÀY THÁNG TRƯỚC KHI ĐƯA VÀO FORM STATE
+  const initialForm = dv 
+    ? {
+        ...dv,
+        ngaySinh: formatDateForInput(dv.ngaySinh),
+        ngayVaoDoan: formatDateForInput(dv.ngayVaoDoan)
+      }
+    : {
+        maDV:'', hoTen:'', ngaySinh:'', gioiTinh:'Nam', danToc:'Kinh', tonGiao:'Không',
+        SDT:'', maChiDoan:'', ngayVaoDoan:'', noiVaoDoan:'', trangThaiSH:'Đang sinh hoạt',
+        chucVu:'Đoàn viên', cccd:'', queQuan:'', diaChiThuongTru:''
+      };
+
+  const [form, setForm] = useState(initialForm); // Gán dữ liệu sạch vào đây
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
+
 
   const handleSubmit = async e => {
     e.preventDefault();
