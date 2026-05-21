@@ -15,6 +15,10 @@ const DoanVienPage = () => {
   const fileInputRef = useRef(null);
   const toast = useToast();
 
+  // --- BỔ SUNG STATE QUẢN LÝ DỮ LIỆU FORM CHỈNH SỬA ---
+  const [formData, setFormData] = useState({});
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     if (currentUser?.maDV) {
       fetchProfile();
@@ -22,6 +26,77 @@ const DoanVienPage = () => {
       setLoading(false);
     }
   }, [currentUser?.maDV]);
+
+  // --- BỔ SUNG EFFECT: ĐỒNG BỘ DỮ LIỆU TỪ PROFILE GỐC VÀO FORM KHI BẬT EDIT ---
+  useEffect(() => {
+    if (isEditing && profile) {
+      setFormData({
+        hoTen: profile.hoTen || '',
+        ngaySinh: profile.ngaySinh ? profile.ngaySinh.split('T')[0] : '',
+        gioiTinh: profile.gioiTinh || 'Nam',
+        cccd: profile.cccd || '',
+        danToc: profile.danToc || 'Kinh',
+        tonGiao: profile.tonGiao || 'Không',
+        SDT: profile.SDT || '',
+        queQuan: profile.queQuan || '',
+        diaChiThuongTru: profile.diaChiThuongTru || '',
+        // Giữ nguyên các trường đoàn vụ từ DB để tránh lỗi ràng buộc hệ thống
+        chucVu: profile.chucVu || 'Đoàn viên',
+        maChiDoan: profile.maChiDoan || null,
+        ngayVaoDoan: profile.ngayVaoDoan ? profile.ngayVaoDoan.split('T')[0] : null,
+        noiVaoDoan: profile.noiVaoDoan || '',
+        trangThaiSH: profile.trangThaiSH || 'Đang sinh hoạt'
+      });
+    }
+  }, [isEditing, profile]);
+
+  // --- BỔ SUNG HÀM LẮNG NGHE SỰ KIỆN THAY ĐỔI Ô INPUT ---
+  const handleInputChange = (key, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  // --- BỔ SUNG HÀM GỬI DỮ LIỆU LÊN NODEJS KHI BẤM LƯU ---
+  const handleSave = async () => {
+    if (!formData.hoTen || formData.hoTen.trim() === '') {
+      toast.warning('Họ và tên không được để trống');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const res = await doanVienService.updateProfile(profile.maDV, formData);
+      if (res.success) {
+        toast.success('Cập nhật thông tin cá nhân thành công!');
+        
+        // --- CHỖ CẦN SỬA: ĐỒNG BỘ TÊN MỚI LÊN GÓC PHẢI TRÊN (LOCALSTORAGE) ---
+        const localUser = localStorage.getItem('user');
+        if (localUser) {
+          const parsedUser = JSON.parse(localUser);
+          parsedUser.hoTen = formData.hoTen; // Ghi đè họ tên mới vào dữ liệu phiên đăng nhập
+          localStorage.setItem('user', JSON.stringify(parsedUser));
+        }
+
+        setIsEditing(false);
+        fetchProfile(); // Tải lại thông tin mới nhất đổ lên giao diện
+
+        // Kích hoạt làm mới nhẹ trang sau 500ms để component Header đọc lại tên mới
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+
+      } else {
+        toast.error(res.message || 'Cập nhật thất bại');
+      }
+    } catch (error) {
+      console.error('Lỗi khi cập nhật hồ sơ:', error);
+      toast.error('Có lỗi xảy ra khi kết nối đến máy chủ');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -51,6 +126,18 @@ const DoanVienPage = () => {
       if (res.success) {
         setProfile(prev => ({ ...prev, anhDaiDien: res.data.anhDaiDien }));
         toast.success('Cập nhật ảnh đại diện thành công!');
+
+        // --- ĐỒNG BỘ THÊM: CẬP NHẬT ẢNH MỚI LÊN LOCALSTORAGE NẾU HEADER CÓ DÙNG ---
+        const localUser = localStorage.getItem('user');
+        if (localUser) {
+          const parsedUser = JSON.parse(localUser);
+          parsedUser.anhDaiDien = res.data.anhDaiDien;
+          localStorage.setItem('user', JSON.stringify(parsedUser));
+        }
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
       }
     } catch (error) {
       console.error('Lỗi upload avatar:', error);
@@ -267,12 +354,12 @@ const DoanVienPage = () => {
                   <h3 className="text-lg font-extrabold text-gray-900">Thông Tin Cá Nhân</h3>
                 </div>
                 <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8 bg-gray-50/30">
-                  <InfoField label="Họ và tên" value={profile.hoTen} icon="badge" isEditing={isEditing} />
-                  <InfoField label="Ngày sinh" value={formatDate(profile.ngaySinh)} icon="cake" isEditing={isEditing} type="date" rawValue={profile.ngaySinh?.split('T')[0]} />
-                  <InfoField label="Giới tính" value={profile.gioiTinh} icon="wc" isEditing={isEditing} />
-                  <InfoField label="Số CCCD" value={profile.cccd} icon="id_card" isEditing={isEditing} />
-                  <InfoField label="Dân tộc" value={profile.danToc} icon="public" isEditing={isEditing} />
-                  <InfoField label="Tôn giáo" value={profile.tonGiao || 'Không'} icon="church" isEditing={isEditing} />
+                  <InfoField label="Họ và tên" value={profile.hoTen} icon="badge" isEditing={isEditing} name="hoTen" formData={formData} onChange={handleInputChange} />
+                  <InfoField label="Ngày sinh" value={formatDate(profile.ngaySinh)} icon="cake" isEditing={isEditing} type="date" name="ngaySinh" formData={formData} onChange={handleInputChange} />
+                  <InfoField label="Giới tính" value={profile.gioiTinh} icon="wc" isEditing={isEditing} name="gioiTinh" formData={formData} onChange={handleInputChange} />
+                  <InfoField label="Số CCCD" value={profile.cccd} icon="id_card" isEditing={isEditing} name="cccd" formData={formData} onChange={handleInputChange} />
+                  <InfoField label="Dân tộc" value={profile.danToc} icon="public" isEditing={isEditing} name="danToc" formData={formData} onChange={handleInputChange} />
+                  <InfoField label="Tôn giáo" value={profile.tonGiao || 'Không'} icon="church" isEditing={isEditing} name="tonGiao" formData={formData} onChange={handleInputChange} />
                 </div>
               </div>
 
@@ -298,13 +385,13 @@ const DoanVienPage = () => {
                     />
                     <p className="text-[10px] text-red-400 mt-2 font-medium">* Email dùng để đăng nhập nên không thể thay đổi</p>
                   </div>
-                  <InfoField label="Số điện thoại" value={profile.SDT} icon="call" isEditing={isEditing} />
+                  <InfoField label="Số điện thoại" value={profile.SDT} icon="call" isEditing={isEditing} name="SDT" formData={formData} onChange={handleInputChange} />
                   <div className="hidden md:block"></div>
                   <div className="md:col-span-2">
-                    <InfoField label="Quê quán" value={profile.queQuan} icon="home_pin" isEditing={isEditing} />
+                    <InfoField label="Quê quán" value={profile.queQuan} icon="home_pin" isEditing={isEditing} name="queQuan" formData={formData} onChange={handleInputChange} />
                   </div>
                   <div className="md:col-span-2">
-                    <InfoField label="Địa chỉ thường trú" value={profile.diaChiThuongTru} icon="location_on" isEditing={isEditing} />
+                    <InfoField label="Địa chỉ thường trú" value={profile.diaChiThuongTru} icon="location_on" isEditing={isEditing} name="diaChiThuongTru" formData={formData} onChange={handleInputChange} />
                   </div>
                 </div>
               </div>
@@ -337,9 +424,9 @@ const DoanVienPage = () => {
                     </div>
                   </div>
                   
-                  <InfoField label="Ngày vào Đoàn" value={formatDate(profile.ngayVaoDoan)} icon="event" isEditing={false} type="date" rawValue={profile.ngayVaoDoan?.split('T')[0]} />
+                  <InfoField label="Ngày vào Đoàn" value={formatDate(profile.ngayVaoDoan)} icon="event" isEditing={false} type="date" />
                   <InfoField label="Nơi vào Đoàn" value={profile.noiVaoDoan} icon="account_balance" isEditing={false} />
-                  <InfoField label="Ngày chuyển đến" value={formatDate(profile.ngayChuyenDen)} icon="flight_land" isEditing={false} type="date" rawValue={profile.ngayChuyenDen?.split('T')[0]} />
+                  <InfoField label="Ngày chuyển đến" value={formatDate(profile.ngayChuyenDen)} icon="flight_land" isEditing={false} type="date" />
                   <InfoField label="Chi Đoàn trực thuộc" value={profile.tenChiDoan || profile.maChiDoan} icon="groups" isEditing={false} />
                 </div>
               </div>
@@ -349,15 +436,20 @@ const DoanVienPage = () => {
                 <div className="flex justify-end gap-3 mt-4">
                   <button 
                     onClick={() => setIsEditing(false)}
-                    className="px-6 py-3 rounded-xl font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+                    disabled={saving}
+                    className="px-6 py-3 rounded-xl font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     Hủy Bỏ
                   </button>
                   <button 
-                    className="flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-all"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-all disabled:opacity-50"
                   >
-                    <span className="material-symbols-outlined text-[20px]">save</span>
-                    Lưu Thay Đổi
+                    <span className="material-symbols-outlined text-[20px]">
+                      {saving ? 'refresh' : 'save'}
+                    </span>
+                    {saving ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                   </button>
                 </div>
               )}
@@ -373,8 +465,10 @@ const DoanVienPage = () => {
   );
 };
 
-// Component phụ trợ hiển thị Field
-const InfoField = ({ label, value, icon, isEditing, type = 'text', rawValue = '' }) => {
+// --- CHỈNH SỬA COMPONENT CON: HOẠT ĐỘNG THEO CƠ CHẾ CONTROLLED COMPONENT ---
+const InfoField = ({ label, value, icon, isEditing, type = 'text', name, formData, onChange }) => {
+  const currentInputValue = (formData && formData[name] !== undefined) ? formData[name] : '';
+
   return (
     <div>
       <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
@@ -384,7 +478,8 @@ const InfoField = ({ label, value, icon, isEditing, type = 'text', rawValue = ''
       {isEditing ? (
         <input 
           type={type} 
-          defaultValue={type === 'date' ? rawValue : (value === '—' ? '' : value)} 
+          value={currentInputValue}
+          onChange={(e) => onChange(name, e.target.value)}
           className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 focus:border-[#004581] focus:ring-2 focus:ring-blue-100 px-4 py-2.5 rounded-xl outline-none transition-all"
           placeholder={`Nhập ${label.toLowerCase()}...`}
         />

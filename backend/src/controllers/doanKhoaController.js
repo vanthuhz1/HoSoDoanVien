@@ -451,4 +451,75 @@ const tuChoiKhieuNai = async (req, res) => {
   } catch(err) { return res.status(500).json({ success: false, message: err.message }); }
 };
 
-module.exports = { getDashboard, getHoatDong, createHoatDong, updateHoatDong, deleteHoatDong, getDiemDanh, checkIn, getChiDoan, updateChucVu, getTienDo, getHoatDongDangMo, getChartData, getKhieuNai, chapNhanKhieuNai, tuChoiKhieuNai };
+// POST /api/doan-khoa/chi-doan – Thêm mới Chi đoàn
+const createChiDoan = async (req, res) => {
+  try {
+    const maKhoa = await getKhoaFromUser(req.user.idUser);
+    if (!maKhoa) return res.status(403).json({ success: false, message: 'Không xác định được khoa' });
+    
+    // Đã bổ sung lấy siSo từ giao diện gửi xuống
+    const { maChiDoan, tenChiDoan, nienKhoa, siSo } = req.body; 
+    if (!maChiDoan || !tenChiDoan) return res.status(400).json({ success: false, message: 'Thiếu mã hoặc tên chi đoàn' });
+
+    const pool = await getConnection();
+    const [[exist]] = await pool.query('SELECT maChiDoan FROM ChiDoan WHERE maChiDoan=?', [maChiDoan]);
+    if (exist) return res.status(400).json({ success: false, message: 'Mã chi đoàn này đã tồn tại trong hệ thống' });
+
+    // Đã bổ sung lưu siSo vào Database
+    await pool.query(
+      'INSERT INTO ChiDoan (maChiDoan, tenChiDoan, maKhoa, nienKhoa, siSo) VALUES (?, ?, ?, ?, ?)',
+      [maChiDoan, tenChiDoan, maKhoa, nienKhoa || '', siSo || 0]
+    );
+    return res.status(201).json({ success: true, message: 'Thêm mới Chi đoàn thành công' });
+  } catch(err) { return res.status(500).json({ success: false, message: err.message }); }
+};
+
+const updateChiDoan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Đảm bảo lấy được 'trangThai' từ req.body
+    const { tenChiDoan, nienKhoa, siSo, trangThai } = req.body; 
+    const pool = await getConnection();
+
+    // Sửa câu lệnh SQL để UPDATE thêm cột trangThai
+    // Lưu ý: Hãy thay 'trangThai' bằng tên cột thật trong database của bạn
+    await pool.query(
+      'UPDATE ChiDoan SET tenChiDoan=?, nienKhoa=?, siSo=?, trangThai=? WHERE maChiDoan=?',
+      [tenChiDoan, nienKhoa, siSo, trangThai, id]
+    );
+    return res.json({ success: true, message: 'Cập nhật thành công' });
+  } catch(err) { 
+    return res.status(500).json({ success: false, message: err.message }); 
+  }
+};
+
+// DELETE /api/doan-khoa/chi-doan/:id – Xóa/Khóa Chi đoàn
+const deleteChiDoan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getConnection();
+
+    // 1. Tắt kiểm tra khóa ngoại để xóa bất chấp
+    await pool.query('SET FOREIGN_KEY_CHECKS = 0');
+
+    // 2. Xóa các sinh viên thuộc lớp này (nếu muốn xóa sạch sành sanh)
+    await pool.query('DELETE FROM DoanVien WHERE maChiDoan = ?', [id]);
+
+    // 3. Xóa lớp
+    const [result] = await pool.query('DELETE FROM ChiDoan WHERE maChiDoan = ?', [id]);
+
+    // 4. Bật lại kiểm tra khóa ngoại
+    await pool.query('SET FOREIGN_KEY_CHECKS = 1');
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy chi đoàn' });
+    }
+
+    return res.json({ success: true, message: 'Đã xóa chi đoàn và dữ liệu liên quan thành công!' });
+  } catch (err) {
+    // Luôn nhớ bật lại kiểm tra nếu có lỗi
+    await getConnection().then(pool => pool.query('SET FOREIGN_KEY_CHECKS = 1'));
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+module.exports = { getDashboard, getHoatDong, createHoatDong, updateHoatDong, deleteHoatDong, getDiemDanh, checkIn, getChiDoan, updateChucVu, getTienDo, getHoatDongDangMo, getChartData, getKhieuNai, chapNhanKhieuNai, tuChoiKhieuNai, createChiDoan, updateChiDoan, deleteChiDoan };
