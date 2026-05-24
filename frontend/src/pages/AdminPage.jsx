@@ -132,15 +132,7 @@ const AdminPage = () => {
       {/* ── MAIN AREA ── */}
       <div className="md:ml-64 flex flex-col min-h-screen bg-[#f0f4f8]">
 
-        {/* Top bar */}
-        <div className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-200 px-8 h-14 flex items-center justify-between shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-500 capitalize tracking-wide">
-            {NAV_ITEMS.find(n=>n.key===activeNav)?.label || 'Tổng quan'}
-          </h2>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">{new Date().toLocaleDateString('vi-VN',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</span>
-          </div>
-        </div>
+
 
         {/* DASHBOARD CONTENT */}
         <main className="flex-1 p-8 max-w-[1280px] w-full mx-auto">

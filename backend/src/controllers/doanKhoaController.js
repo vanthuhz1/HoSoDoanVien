@@ -477,15 +477,12 @@ const createChiDoan = async (req, res) => {
 const updateChiDoan = async (req, res) => {
   try {
     const { id } = req.params;
-    // Đảm bảo lấy được 'trangThai' từ req.body
-    const { tenChiDoan, nienKhoa, siSo, trangThai } = req.body; 
+    const { tenChiDoan, nienKhoa, siSo } = req.body; 
     const pool = await getConnection();
 
-    // Sửa câu lệnh SQL để UPDATE thêm cột trangThai
-    // Lưu ý: Hãy thay 'trangThai' bằng tên cột thật trong database của bạn
     await pool.query(
-      'UPDATE ChiDoan SET tenChiDoan=?, nienKhoa=?, siSo=?, trangThai=? WHERE maChiDoan=?',
-      [tenChiDoan, nienKhoa, siSo, trangThai, id]
+      'UPDATE ChiDoan SET tenChiDoan=?, nienKhoa=?, siSo=? WHERE maChiDoan=?',
+      [tenChiDoan, nienKhoa, siSo, id]
     );
     return res.json({ success: true, message: 'Cập nhật thành công' });
   } catch(err) { 

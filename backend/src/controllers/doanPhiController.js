@@ -136,6 +136,11 @@ const getInvoice = async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching invoice:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy thông tin hóa đơn',
+      error: error.message
+    });
   }
 };
 

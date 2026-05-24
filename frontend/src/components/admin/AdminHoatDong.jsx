@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useToast } from '../common/Toast';
 
-const API = 'http://localhost:5001/api/activities';
+const API = 'http://localhost:5000/api/activities';
 const H = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
 const TT = {
@@ -211,15 +211,15 @@ const MinhChungView = ({ act, onBack }) => {
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  const toggleSel = id => setSel(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
-  const toggleAll = () => setSel(sel.length === list.length ? [] : list.map(d => d.idDSDK));
+  const toggleSel = maDV => setSel(p => p.includes(maDV) ? p.filter(x => x !== maDV) : [...p, maDV]);
+  const toggleAll = () => setSel(sel.length === list.length ? [] : list.map(d => d.maDV));
 
-  const doAction = async (trangThai, lyDo = '') => {
-    const ids = tuChoi ? [tuChoi.idDSDK] : sel;
+  const doAction = async (trangThai) => {
+    const ids = sel;
     if (!ids.length) return;
     try {
-      const r = await axios.put(`${API}/duyet-minh-chung`, { idList: ids, trangThai, lyDo }, { headers: H() });
-      setMsg(r.data.message); setTC(null); fetch();
+      const r = await axios.put(`${API}/duyet-minh-chung`, { idList: ids, idHD: act.idHD, trangThai }, { headers: H() });
+      setMsg(r.data.message); fetch();
     } catch (e) { setMsg(e.response?.data?.message || 'Lỗi'); }
   };
 
@@ -243,7 +243,7 @@ const MinhChungView = ({ act, onBack }) => {
           className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 disabled:opacity-40 flex items-center gap-2">
           <span className="material-symbols-outlined text-sm">check_circle</span>Duyệt đã chọn
         </button>
-        <button onClick={() => doAction('Đã tham gia')} disabled={!list.length}
+        <button onClick={() => { setSel(list.map(d => d.maDV)); setTimeout(() => doAction('Đã tham gia'), 0); }} disabled={!list.length}
           className="px-4 py-2 bg-[#004581] text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-40 flex items-center gap-2">
           <span className="material-symbols-outlined text-sm">done_all</span>Duyệt tất cả
         </button>
@@ -262,8 +262,8 @@ const MinhChungView = ({ act, onBack }) => {
             {loading ? <tr><td colSpan={7} className="p-8 text-center"><span className="material-symbols-outlined animate-spin text-4xl text-gray-300">refresh</span></td></tr>
               : list.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-gray-400">Không có minh chứng chờ duyệt</td></tr>
                 : list.map(dk => (
-                  <tr key={dk.idDSDK} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4"><input type="checkbox" checked={sel.includes(dk.idDSDK)} onChange={() => toggleSel(dk.idDSDK)} className="rounded" /></td>
+                  <tr key={dk.maDV} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4"><input type="checkbox" checked={sel.includes(dk.maDV)} onChange={() => toggleSel(dk.maDV)} className="rounded" /></td>
                     <td className="p-4 font-semibold text-gray-800">{dk.hoTen}</td>
                     <td className="p-4 font-mono text-xs text-gray-400">{dk.maDV}</td>
                     <td className="p-4 text-gray-500">{dk.tenKhoa || '—'}</td>
@@ -276,7 +276,7 @@ const MinhChungView = ({ act, onBack }) => {
                     <td className="p-4"><Badge tt={dk.trangThaiThamGia} /></td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => doAction('Đã tham gia', '')} className="px-2 py-1 bg-green-500 text-white rounded text-xs font-semibold hover:bg-green-600">Duyệt</button>
+                        <button onClick={() => { setSel([dk.maDV]); setTimeout(() => doAction('Đã tham gia'), 0); }} className="px-2 py-1 bg-green-500 text-white rounded text-xs font-semibold hover:bg-green-600">Duyệt</button>
                         <button onClick={() => setTC(dk)} className="px-2 py-1 bg-red-500 text-white rounded text-xs font-semibold hover:bg-red-600">Từ chối</button>
                       </div>
                     </td>

@@ -164,8 +164,8 @@ const getDangKy = async (req, res) => {
     const { trangThai, maKhoa } = req.query;
     const pool = await getConnection();
     let sql = `
-      SELECT dk.idDSDK, dk.maDV, dk.trangThaiThamGia, dk.trangThaiCongDiem,
-             dk.minhChung, dk.lyDoTuChoi,
+      SELECT dk.maDV, dk.trangThaiThamGia, dk.trangThaiCongDiem,
+             dk.ngayDangKy, dk.ThoiGianCheckIn,
              dv.hoTen, dv.maChiDoan,
              cd.maKhoa, k.tenKhoa
       FROM DanhSachDangKy dk
@@ -185,15 +185,15 @@ const getDangKy = async (req, res) => {
 // PUT /api/activities/duyet-minh-chung – Duyệt / Từ chối minh chứng hàng loạt
 const duyetMinhChung = async (req, res) => {
   try {
-    const { idList, trangThai, lyDo } = req.body; // idList: mảng idDSDK
-    if (!idList?.length) return res.status(400).json({ success: false, message: 'Vui lòng chọn ít nhất 1 đoàn viên' });
+    const { idList, idHD, trangThai } = req.body; // idList: mảng maDV, idHD: mã hoạt động
+    if (!idList?.length || !idHD) return res.status(400).json({ success: false, message: 'Vui lòng chọn ít nhất 1 đoàn viên' });
     const pool = await getConnection();
     const isDuyet = trangThai === 'Đã tham gia';
     await pool.query(
       `UPDATE DanhSachDangKy
-       SET trangThaiThamGia = ?, trangThaiCongDiem = ?, lyDoTuChoi = ?
-       WHERE idDSDK IN (?)`,
-      [trangThai, isDuyet ? 'Đã tích lũy' : 'Không được tích lũy', lyDo || null, idList]
+       SET trangThaiThamGia = ?, trangThaiCongDiem = ?
+       WHERE idHD = ? AND maDV IN (?)`,
+      [trangThai, isDuyet ? 'Đã tích lũy' : 'Chưa cộng', idHD, idList]
     );
     return res.json({ success: true, message: `Đã ${isDuyet ? 'duyệt' : 'từ chối'} ${idList.length} đoàn viên` });
   } catch (err) { return res.status(500).json({ success: false, message: err.message }); }

@@ -172,10 +172,11 @@ const createDoanVien = async (req, res) => {
       ngayVaoDoan, data.noiVaoDoan, data.trangThaiSH || 'Đang sinh hoạt'
     ]);
 
-    // 3. 🚀 TỰ ĐỘNG ĐỒNG BỘ: Tạo tài khoản (Khớp chuẩn xác tên cột IdVaiTro của bạn)
+    // 3. 🚀 TỰ ĐỘNG ĐỒNG BỘ: Tạo tài khoản
     const userEmail = `${data.maDV.toLowerCase()}@sv.ute.udn.vn`;
-    const hashedPassword = '$2b$10$A3q1X4EuGqcKJGAj/q6Mj.t1EsxIXIlxJQrrKUNc4eXJmhZRb6qLu'; // Mật khẩu 123456
-    const idVaiTroMacDinh = 4; // 4 tương ứng với quyền 'Đoàn viên' trong bảng VaiTro của bạn
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash('123456', 10); // Mật khẩu mặc định: 123456
+    const idVaiTroMacDinh = 4; // 4 tương ứng với quyền 'Đoàn viên' trong bảng VaiTro
 
     await pool.query(`
       INSERT INTO TaiKhoan (maDV, email, tenNguoiDung, matKhau, IdVaiTro)
