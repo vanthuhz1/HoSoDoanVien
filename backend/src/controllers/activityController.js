@@ -36,7 +36,16 @@ const getHomeActivities = async (req, res) => {
     if (search) { sql += ` AND hd.tenHD LIKE ?`; params.push(`%${search}%`); }
     if (date) { sql += ` AND DATE(hd.ngayToChuc) >= ?`; params.push(date); }
     if (maxQty) { sql += ` AND hd.soLuongMAX <= ?`; params.push(parseInt(maxQty)); }
-    if (diemRenLuyen) { sql += ` AND hd.diemHoatDong = ?`; params.push(parseInt(diemRenLuyen)); }
+    if (diemRenLuyen) {
+      if (diemRenLuyen === '<10') {
+        sql += ` AND hd.diemHoatDong < 10`;
+      } else if (diemRenLuyen === '>=10') {
+        sql += ` AND hd.diemHoatDong >= 10`;
+      } else {
+        sql += ` AND hd.diemHoatDong = ?`;
+        params.push(parseInt(diemRenLuyen));
+      }
+    }
 
     sql += ` GROUP BY hd.idHD ORDER BY hd.ngayToChuc ASC`;
 

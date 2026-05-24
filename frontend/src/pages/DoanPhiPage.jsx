@@ -5,6 +5,7 @@ import Footer from '../components/layout/Footer';
 import { doanPhiService } from '../services/doanPhiService';
 import { authService } from '../services/authService';
 import { useToast } from '../components/common/Toast';
+import Loading from '../components/common/Loading';
 
 const DoanPhiPage = () => {
   const [fees, setFees] = useState([]);
@@ -127,10 +128,7 @@ const DoanPhiPage = () => {
 
           {/* ── Content ── */}
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-28 gap-4">
-              <span className="material-symbols-outlined text-5xl text-[#004581] animate-spin">refresh</span>
-              <p className="text-gray-500 font-medium">Đang tải dữ liệu...</p>
-            </div>
+            <Loading variant="fullscreen" text="Đang tải dữ liệu đoàn phí..." />
           ) : fees.length === 0 ? (
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-16 text-center">
               <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5">
@@ -211,7 +209,11 @@ const DoanPhiPage = () => {
                             ) : (
                               <button
                                 onClick={() => handlePayment(fee)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm"
+                                disabled={fee.trangThaiMuc !== 'Đang mở thu'}
+                                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm
+                                  ${fee.trangThaiMuc !== 'Đang mở thu' ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-80' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}
+                                `}
+                                title={fee.trangThaiMuc !== 'Đang mở thu' ? 'Đợt thu này không mở (đã đóng hoặc chưa bắt đầu)' : ''}
                               >
                                 <span className="material-symbols-outlined text-[16px]">payment</span>
                                 Thanh toán

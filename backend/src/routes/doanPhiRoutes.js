@@ -4,7 +4,7 @@ const {
   getMyFees, paymentFee, getInvoice,
   getDanhMuc, createDanhMuc, kichHoatDanhMuc, dongDanhMuc,
   getThongKeDoanPhi, getTienDoDoanPhi, getChiTietChiDoan,
-  deleteDanhMuc
+  deleteDanhMuc, duyetThuCong, getBaoCaoDoanPhi
 } = require('../controllers/doanPhiController');
 
 // GET /api/doan-phi/my-fees - Lấy danh sách đoàn phí của đoàn viên
@@ -25,5 +25,7 @@ router.delete('/danh-muc/:id', deleteDanhMuc);
 router.get('/thong-ke', getThongKeDoanPhi);
 router.get('/tien-do', getTienDoDoanPhi);
 router.get('/chi-doan/:id', getChiTietChiDoan);
+router.put('/duyet-thu-cong', duyetThuCong);
+router.get('/bao-cao', getBaoCaoDoanPhi);
 
 module.exports = router;

@@ -6,6 +6,7 @@ import { activityService } from '../services/activityService';
 import { authService } from '../services/authService';
 import { thongBaoService } from '../services/thongBaoService';
 import { useToast } from '../components/common/Toast';
+import Loading from '../components/common/Loading';
 import { useNavigate } from 'react-router-dom';
 
 const HomePage = () => {
@@ -28,7 +29,7 @@ const HomePage = () => {
     try {
       const [activitiesRes, announcementsRes] = await Promise.all([
         activityService.getHomeActivities(filters),
-        thongBaoService.getAll({ phamVi: 'Công khai' })
+        thongBaoService.getAll(isLoggedIn ? {} : { phamVi: 'Công khai' })
       ]);
       setActivities(activitiesRes.data || []);
       setAnnouncements(announcementsRes.data || []);
@@ -158,16 +159,8 @@ const HomePage = () => {
                       className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-[#004581]/20 focus:border-[#004581] transition-all outline-none appearance-none cursor-pointer"
                     >
                       <option value="">Tất cả điểm</option>
-                      <option value="1">1 điểm</option>
-                      <option value="2">2 điểm</option>
-                      <option value="3">3 điểm</option>
-                      <option value="4">4 điểm</option>
-                      <option value="5">5 điểm</option>
-                      <option value="6">6 điểm</option>
-                      <option value="7">7 điểm</option>
-                      <option value="8">8 điểm</option>
-                      <option value="9">9 điểm</option>
-                      <option value="10">10 điểm</option>
+                      <option value="<10">Dưới 10 điểm</option>
+                      <option value=">=10">Từ 10 điểm trở lên</option>
                     </select>
                   </div>
 
@@ -184,9 +177,8 @@ const HomePage = () => {
               {/* Activities Grid */}
               <div>
                 {loading ? (
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-                    <span className="material-symbols-outlined text-4xl text-[#004581] animate-spin">refresh</span>
-                    <p className="mt-4 text-gray-500 font-medium">Đang tải danh sách hoạt động...</p>
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12">
+                    <Loading variant="fullscreen" text="Đang tải danh sách hoạt động..." />
                   </div>
                 ) : activities.length === 0 ? (
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-16 text-center">
@@ -213,33 +205,9 @@ const HomePage = () => {
                           <div className="p-5 flex-1 flex flex-col pt-6">
                             {/* Badge trạng thái và điểm */}
                             <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
-                              {/* Badge trạng thái động từ database */}
-                              {activity.trangThaiHD && (
-                                <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border shadow-sm ${
-                                  activity.trangThaiHD === 'Đang mở' 
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                    : activity.trangThaiHD === 'Chờ duyệt'
-                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                    : activity.trangThaiHD === 'Đã kết thúc'
-                                    ? 'bg-gray-50 text-gray-700 border-gray-200'
-                                    : 'bg-red-50 text-red-700 border-red-200'
-                                }`}>
-                                  <span className={`material-symbols-outlined text-[14px] fill ${
-                                    activity.trangThaiHD === 'Đang mở' ? 'text-emerald-600' : 
-                                    activity.trangThaiHD === 'Chờ duyệt' ? 'text-blue-600' :
-                                    activity.trangThaiHD === 'Đã kết thúc' ? 'text-gray-600' : 'text-red-600'
-                                  }`}>
-                                    {activity.trangThaiHD === 'Đang mở' ? 'check_circle' : 
-                                     activity.trangThaiHD === 'Chờ duyệt' ? 'schedule' :
-                                     activity.trangThaiHD === 'Đã kết thúc' ? 'event_busy' : 'cancel'}
-                                  </span>
-                                  <span className="text-xs font-bold">{activity.trangThaiHD}</span>
-                                </div>
-                              )}
-                              
-                              {/* Badge điểm */}
+                              {/* Badge điểm (Giữ lại, bỏ badge trạng thái) */}
                               {activity.diemHoatDong > 0 && (
-                                <div className="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2 py-1 rounded-md border border-yellow-200 shadow-sm">
+                                <div className="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2 py-1 rounded-md border border-yellow-200 shadow-sm ml-auto">
                                   <span className="material-symbols-outlined text-yellow-500 text-[14px] fill">stars</span>
                                   <span className="text-xs font-bold">+{activity.diemHoatDong}</span>
                                 </div>
@@ -390,18 +358,27 @@ const HomePage = () => {
                 
                 <div className="p-0">
                   {loading ? (
-                    <div className="p-8 text-center text-gray-400">Đang tải...</div>
+                    <div className="p-8 flex justify-center">
+                      <Loading variant="inline" text="Đang tải thông báo..." />
+                    </div>
                   ) : announcements.length === 0 ? (
                     <div className="p-8 text-center text-gray-500">Không có thông báo.</div>
                   ) : (
                     <div className="divide-y divide-gray-100 max-h-[800px] overflow-y-auto custom-scrollbar">
                       {announcements.map((tb) => (
                         <div key={tb.idThongBao} className="p-5 hover:bg-blue-50/50 transition-colors cursor-pointer group">
-                          <div className="flex items-center gap-2 mb-2.5">
+                          <div className="flex items-center gap-2 mb-2.5 flex-wrap">
                             <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border rounded shadow-sm ${getAnnounceBadge(tb.loai)}`}>
-                              Từ {tb.phamVi}
+                              {tb.loai}
                             </span>
-                            <span className="text-[11px] text-gray-400 font-medium">
+                            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border rounded shadow-sm ${
+                              tb.phamVi === 'Nội bộ' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              tb.phamVi === 'Công khai' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              'bg-gray-50 text-gray-700 border-gray-200'
+                            }`}>
+                              {tb.phamVi}
+                            </span>
+                            <span className="text-[11px] text-gray-400 font-medium ml-auto">
                               {new Date(tb.ngayTao).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </span>
                           </div>

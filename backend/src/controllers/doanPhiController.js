@@ -314,6 +314,90 @@ const getChiTietChiDoan = async (req, res) => {
   }
 };
 
+// PUT /api/doan-phi/duyet-thu-cong - Admin duyệt thu tiền mặt cho đoàn viên
+const duyetThuCong = async (req, res) => {
+  try {
+    const { maDV, idMucDoanPhi, ghiChu } = req.body;
+    if (!maDV || !idMucDoanPhi) {
+      return res.status(400).json({ success: false, message: 'Thiếu maDV hoặc idMucDoanPhi' });
+    }
+    const pool = await getConnection();
+    // Tìm bản ghi DoanPhi theo maDV + idMucDoanPhi
+    const [[dp]] = await pool.query(
+      `SELECT _idDoanPhi, trangThai FROM DoanPhi WHERE maDV = ? AND _idMucDoanPhi = ?`,
+      [maDV, idMucDoanPhi]
+    );
+    if (!dp) return res.status(404).json({ success: false, message: 'Không tìm thấy bản ghi đoàn phí' });
+    if (dp.trangThai === 'Đã nộp') return res.status(400).json({ success: false, message: 'Đoàn viên này đã nộp phí rồi' });
+
+    await pool.query(
+      `UPDATE DoanPhi SET trangThai = 'Đã nộp', phuongThucThanhToan = 'Tiền mặt', ThoiGianThanhToan = NOW()
+       WHERE _idDoanPhi = ?`,
+      [dp._idDoanPhi]
+    );
+    return res.status(200).json({ success: true, message: 'Duyệt thu tiền mặt thành công' });
+  } catch (error) {
+    console.error('Error in duyetThuCong:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET /api/doan-phi/bao-cao - Lấy dữ liệu chi tiết để xuất báo cáo Excel
+const getBaoCaoDoanPhi = async (req, res) => {
+  try {
+    const { idMucDoanPhi } = req.query;
+    if (!idMucDoanPhi) return res.status(400).json({ success: false, message: 'Thiếu idMucDoanPhi' });
+
+    const pool = await getConnection();
+
+    // Lấy thông tin đợt thu
+    const [[dm]] = await pool.query(
+      'SELECT namHoc, soTien, trangThai FROM DanhMucDoanPhi WHERE _idMucDoanPhi = ?',
+      [idMucDoanPhi]
+    );
+    if (!dm) return res.status(404).json({ success: false, message: 'Không tìm thấy đợt thu' });
+
+    // Lấy danh sách chi tiết từng sinh viên
+    const sql = `
+      SELECT
+        dv.maDV AS mssv,
+        dv.hoTen,
+        cd.tenChiDoan AS lopSinhHoat,
+        k.tenKhoa,
+        dp.trangThai,
+        dp.ThoiGianThanhToan AS ngayNop,
+        dp.phuongThucThanhToan,
+        dp.maGiaoDich,
+        dp.NgayHetHan
+      FROM DoanPhi dp
+      INNER JOIN DoanVien dv ON dp.maDV = dv.maDV
+      LEFT JOIN ChiDoan cd ON dv.maChiDoan = cd.maChiDoan
+      LEFT JOIN Khoa k ON cd.maKhoa = k.maKhoa
+      WHERE dp._idMucDoanPhi = ?
+      ORDER BY cd.tenChiDoan ASC, dv.hoTen ASC
+    `;
+    const [rows] = await pool.query(sql, [idMucDoanPhi]);
+
+    // Thống kê tổng hợp
+    const tongSV    = rows.length;
+    const daNop     = rows.filter(r => r.trangThai === 'Đã nộp').length;
+    const chuaNop   = tongSV - daNop;
+    const tongTienThu = daNop * dm.soTien;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        mucPhi: dm,
+        chitiet: rows,
+        tongHop: { tongSV, daNop, chuaNop, tongTienThu, soTien: dm.soTien }
+      }
+    });
+  } catch (error) {
+    console.error('Error getBaoCaoDoanPhi:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // DELETE /api/doan-phi/danh-muc/:id
 const deleteDanhMuc = async (req, res) => {
   try {
@@ -366,5 +450,7 @@ module.exports = {
   getThongKeDoanPhi,
   getTienDoDoanPhi,
   getChiTietChiDoan,
-  deleteDanhMuc
+  deleteDanhMuc,
+  duyetThuCong,
+  getBaoCaoDoanPhi
 };
