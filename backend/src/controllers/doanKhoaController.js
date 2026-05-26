@@ -67,7 +67,7 @@ const getDashboard = async (req, res) => {
     // Hoạt động bị từ chối (cần tạo lại)
     const [tuChoiHD] = await pool.query(
       `SELECT idHD, tenHD, trangThaiHD FROM HoatDongDoan
-       WHERE maKhoa=? AND trangThaiHD='Từ chối' ORDER BY idHD DESC LIMIT 5`, [maKhoa]
+       WHERE maKhoa=? AND trangThaiHD='Bị từ chối' ORDER BY idHD DESC LIMIT 5`, [maKhoa]
     );
 
     // Hoạt động chờ duyệt
@@ -119,16 +119,14 @@ const createHoatDong = async (req, res) => {
 
     const pool = await getConnection();
     const [[khoaInfo]] = await pool.query('SELECT tenKhoa FROM Khoa WHERE maKhoa=?', [maKhoa]);
-    // Tạo ID HĐ: HD-{maKhoa}-{timestamp}
-    const idHD = `HD-${maKhoa}-${Date.now()}`;
     await pool.query(
-      `INSERT INTO HoatDongDoan (idHD, tenHD, moTa, ngayToChuc, diaDiem, soLuongMAX, diemHoatDong,
+      `INSERT INTO HoatDongDoan (tenHD, moTa, ngayToChuc, diaDiem, soLuongMAX, diemHoatDong,
         trangThaiHD, donViToChuc, maKhoa, soLuongDaDK, Linkdinhkem)
-       VALUES (?,?,?,?,?,?,?,'Chờ duyệt',?,?,0,?)`,
-      [idHD, tenHD, moTa||'', ngayToChuc, diaDiem||'', soLuongMAX||50, diemHoatDong||0,
+       VALUES (?,?,?,?,?,?,'Chờ duyệt',?,?,0,?)`,
+      [tenHD, moTa||'', ngayToChuc, diaDiem||'', soLuongMAX||50, diemHoatDong||0,
        `Đoàn khoa ${khoaInfo?.tenKhoa||maKhoa}`, maKhoa, Linkdinhkem||null]
     );
-    return res.status(201).json({ success: true, message: 'Đã gửi đề xuất hoạt động lên Đoàn trường', idHD });
+    return res.status(201).json({ success: true, message: 'Đã gửi đề xuất hoạt động lên Đoàn trường' });
   } catch(err) { return res.status(500).json({ success: false, message: err.message }); }
 };
 

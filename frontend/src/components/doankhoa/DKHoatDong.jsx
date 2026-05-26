@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useToast } from '../common/Toast';
 
 const API = 'http://localhost:5000/api/doan-khoa';
 const H   = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -16,7 +17,7 @@ const STATUS_MAP = {
 const Badge = ({ tt }) => {
   const s = STATUS_MAP[tt] || { cls:'bg-gray-100 text-gray-500', dot:'bg-gray-400' };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${s.cls}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${s.cls}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />{tt}
     </span>
   );
@@ -31,6 +32,8 @@ const FI = ({ label, name, type='text', placeholder='', value, onChange }) => (
 );
 
 const DKHoatDong = () => {
+  const toast = useToast();
+  
   const [tab, setTab]       = useState('list');
   const [data, setData]     = useState([]);
   const [loading, setL]     = useState(true);
@@ -43,29 +46,44 @@ const DKHoatDong = () => {
 
   const fetchData = useCallback(async () => {
     setL(true);
-    try { const r = await axios.get(`${API}/hoat-dong`, { headers: H() }); setData(r.data.data||[]); }
-    catch(e) { console.error(e); } finally { setL(false); }
-  }, []);
+    try { 
+      const r = await axios.get(`${API}/hoat-dong`, { headers: H() }); 
+      setData(r.data.data||[]); 
+    }
+    catch(e) { 
+      toast.error('Lỗi khi tải dữ liệu: ' + (e.response?.data?.message || e.message));
+    } 
+    finally { setL(false); }
+  }, [toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const submit = async e => {
     e.preventDefault();
-    if (!form.tenHD || !form.ngayToChuc) { setMsg('Vui lòng điền đủ tên và ngày'); return; }
-    if (new Date(form.ngayToChuc) < new Date()) { setMsg('❌ Ngày tổ chức không được ở trong quá khứ'); return; }
+    if (!form.tenHD || !form.ngayToChuc) { 
+      toast.warning('Vui lòng điền đủ tên và ngày'); 
+      return; 
+    }
+    if (new Date(form.ngayToChuc) < new Date()) { 
+      toast.error('Ngày tổ chức không được ở trong quá khứ'); 
+      return; 
+    }
     setSub(true);
     try {
       if (editingId) {
         await axios.put(`${API}/hoat-dong/${editingId}`, form, { headers: H() });
-        setMsg('✅ Đã cập nhật hoạt động thành công!');
+        toast.success('Đã cập nhật hoạt động thành công!');
       } else {
         await axios.post(`${API}/hoat-dong`, form, { headers: H() });
-        setMsg('✅ Đã gửi đề xuất lên Đoàn trường thành công!');
+        toast.success('Đã gửi đề xuất lên Đoàn trường thành công!');
       }
       setForm({ tenHD:'', moTa:'', ngayToChuc:'', diaDiem:'', soLuongMAX:50, diemHoatDong:0, Linkdinhkem:'' });
       setEditingId(null);
-      setTab('list'); fetchData();
-    } catch(e) { setMsg('❌ ' + (e.response?.data?.message||'Lỗi')); }
+      setTab('list'); 
+      fetchData();
+    } catch(e) { 
+      toast.error(e.response?.data?.message || 'Có lỗi xảy ra');
+    }
     finally { setSub(false); }
   };
 
@@ -85,13 +103,15 @@ const DKHoatDong = () => {
   };
 
   const handleDelete = async (idHD) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa hoạt động này?')) return;
+    const confirmed = await toast.confirm('Bạn có chắc chắn muốn xóa hoạt động này?');
+    if (!confirmed) return;
+    
     try {
       await axios.delete(`${API}/hoat-dong/${idHD}`, { headers: H() });
-      setMsg('✅ Đã xóa hoạt động thành công!');
+      toast.success('Đã xóa hoạt động thành công!');
       fetchData();
     } catch(e) {
-      setMsg('❌ ' + (e.response?.data?.message||'Lỗi xóa hoạt động'));
+      toast.error(e.response?.data?.message || 'Lỗi xóa hoạt động');
     }
   };
 
@@ -138,38 +158,43 @@ const DKHoatDong = () => {
 
       {tab === 'list' && (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left table-auto">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
-                {['Tên hoạt động','Ngày','Địa điểm','SL tối đa','SL ĐK','Trạng thái','Link','Thao tác'].map(h=>(
-                  <th key={h} className="px-5 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
-                ))}
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-left">Tên hoạt động</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-left">Ngày</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-left">Địa điểm</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">SL tối đa</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">SL ĐK</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-left">Trạng thái</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-left">Link</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center w-[90px] min-w-[90px]">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="py-16 text-center"><span className="material-symbols-outlined animate-spin text-5xl text-gray-200">refresh</span></td></tr>
+                <tr><td colSpan={8} className="py-16 text-center"><span className="material-symbols-outlined animate-spin text-5xl text-gray-200">refresh</span></td></tr>
               ) : data.length === 0 ? (
-                <tr><td colSpan={7} className="py-16 text-center">
+                <tr><td colSpan={8} className="py-16 text-center">
                   <span className="material-symbols-outlined text-6xl text-gray-200 block mb-3">event_busy</span>
                   <p className="text-gray-400">Chưa có hoạt động nào. <button onClick={()=>setTab('form')} className="text-[#004581] underline">Đề xuất ngay →</button></p>
                 </td></tr>
               ) : data.map(hd => (
                 <tr key={hd.idHD} className="hover:bg-blue-50/20 transition-colors">
-                  <td className="px-5 py-4 font-bold text-gray-900 max-w-xs">
+                  <td className="px-4 py-3 font-bold text-gray-900 max-w-xs">
                     <p className="truncate">{hd.tenHD}</p>
                     <p className="text-[11px] text-gray-400 font-mono mt-0.5">{hd.idHD}</p>
                   </td>
-                  <td className="px-5 py-4 text-gray-500 text-xs whitespace-nowrap">{fmtDate(hd.ngayToChuc)}</td>
-                  <td className="px-5 py-4 text-gray-500 text-sm max-w-[140px] truncate">{hd.diaDiem||'—'}</td>
-                  <td className="px-5 py-4 text-center font-semibold text-gray-700">{hd.soLuongMAX}</td>
-                  <td className="px-5 py-4 text-center">
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(hd.ngayToChuc)}</td>
+                  <td className="px-4 py-3 text-gray-500 text-sm max-w-[140px] truncate">{hd.diaDiem||'—'}</td>
+                  <td className="px-4 py-3 text-center font-semibold text-gray-700">{hd.soLuongMAX}</td>
+                  <td className="px-4 py-3 text-center">
                     <span className={`text-sm font-black ${(hd.soDaDangKy||0)>=hd.soLuongMAX?'text-red-500':'text-emerald-600'}`}>
                       {hd.soDaDangKy||0}
                     </span>
                   </td>
-                  <td className="px-5 py-4"><Badge tt={hd.trangThaiHD} /></td>
-                  <td className="px-5 py-4">
+                  <td className="px-4 py-3 whitespace-nowrap"><Badge tt={hd.trangThaiHD} /></td>
+                  <td className="px-4 py-3 whitespace-nowrap">
                     {hd.Linkdinhkem ? (
                       <a href={hd.Linkdinhkem} target="_blank" rel="noreferrer"
                         className="text-[#004581] text-xs hover:underline flex items-center gap-1">
@@ -177,17 +202,33 @@ const DKHoatDong = () => {
                       </a>
                     ) : <span className="text-gray-300 text-xs">—</span>}
                   </td>
-                  <td className="px-5 py-4 text-center">
-                    {hd.trangThaiHD === 'Chờ duyệt' && (
-                      <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => handleEdit(hd)} className="text-[#004581] hover:text-[#0066bb] bg-blue-50 p-1.5 rounded-lg transition-colors" title="Sửa">
-                          <span className="material-symbols-outlined text-[16px]">edit</span>
+                  <td className="px-4 py-3 text-center w-[90px] min-w-[90px]">
+                    <div className="flex items-center justify-center gap-1.5 w-[90px] min-w-[90px] mx-auto">
+                      {hd.trangThaiHD === 'Chờ duyệt' && (
+                        <>
+                          <button onClick={() => handleEdit(hd)} 
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all active:scale-95 flex-shrink-0" 
+                            title="Chỉnh sửa đề xuất">
+                            <span className="material-symbols-outlined text-base font-semibold">edit</span>
+                          </button>
+                          <button onClick={() => handleDelete(hd.idHD)} 
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-all active:scale-95 flex-shrink-0" 
+                            title="Xóa đề xuất">
+                            <span className="material-symbols-outlined text-base font-semibold">delete</span>
+                          </button>
+                        </>
+                      )}
+                      {hd.trangThaiHD === 'Bị từ chối' && hd.lyDoTuChoi && (
+                        <button onClick={() => alert(`Lý do từ chối: ${hd.lyDoTuChoi}`)}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition-all active:scale-95 flex-shrink-0"
+                          title="Xem lý do từ chối từ Ban Thường vụ">
+                          <span className="material-symbols-outlined text-base font-semibold">info</span>
                         </button>
-                        <button onClick={() => handleDelete(hd.idHD)} className="text-red-500 hover:text-red-600 bg-red-50 p-1.5 rounded-lg transition-colors" title="Xóa">
-                          <span className="material-symbols-outlined text-[16px]">delete</span>
-                        </button>
-                      </div>
-                    )}
+                      )}
+                      {hd.trangThaiHD !== 'Chờ duyệt' && hd.trangThaiHD !== 'Bị từ chối' && (
+                        <span className="text-gray-400 text-xs">—</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

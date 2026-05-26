@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useToast } from '../common/Toast';
 
 const API = 'http://localhost:5000/api/doan-khoa';
 const H   = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -9,6 +10,8 @@ const COLORS  = ['from-violet-500 to-purple-600','from-blue-500 to-cyan-500','fr
 const aColor  = s => COLORS[(s||'').charCodeAt(0)%COLORS.length];
 
 const DKChiDoan = () => {
+  const toast = useToast();
+  
   // --- STATE CŨ GIỮ NGUYÊN ---
   const [data, setData]     = useState([]);
   const [chiDoans, setCD]   = useState([]);
@@ -37,9 +40,11 @@ const DKChiDoan = () => {
       const r = await axios.get(`${API}/chi-doan${selCD?`?maChiDoan=${selCD}`:''}`, { headers: H() });
       setData(r.data.data||[]);
       if (r.data.chiDoans) setCD(r.data.chiDoans);
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+      toast.error('Lỗi khi tải dữ liệu: ' + (e.response?.data?.message || e.message));
+    }
     finally { setL(false); }
-  }, [selCD]);
+  }, [selCD, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -47,9 +52,12 @@ const DKChiDoan = () => {
     if (!editing) return;
     try {
       await axios.put(`${API}/chi-doan/${editing.maDV}/chuc-vu`, { chucVu: editing.chucVu }, { headers: H() });
-      setMsg('✅ Đã cập nhật chức vụ'); setEdit(null); fetchData();
-    } catch(e) { setMsg('❌ ' + (e.response?.data?.message||'Lỗi')); }
-    setTimeout(() => setMsg(''), 3000);
+      toast.success('Đã cập nhật chức vụ thành công');
+      setEdit(null); 
+      fetchData();
+    } catch(e) { 
+      toast.error(e.response?.data?.message || 'Lỗi khi cập nhật chức vụ');
+    }
   };
 
   // --- 3 HÀM LOGIC GỌI API CRUD CHI ĐOÀN ---
@@ -82,21 +90,17 @@ const DKChiDoan = () => {
     };
 
     if (isEditCDMode) {
-      // Gọi PUT /api/doan-khoa/chi-doan/:id
       const r = await axios.put(`${API}/chi-doan/${cdFormData.maChiDoan}`, cdFormData, config);
-      setMsg(`✅ ${r.data.message}`);
+      toast.success(r.data.message || 'Cập nhật chi đoàn thành công');
     } else {
-      // Gọi POST /api/doan-khoa/chi-doan
-      // API này khớp với router.post('/chi-doan', ...) trong doanKhoaRoutes.js
       const r = await axios.post(`${API}/chi-doan`, cdFormData, config);
-      setMsg(`✅ ${r.data.message}`);
+      toast.success(r.data.message || 'Thêm chi đoàn mới thành công');
     }
     
     setShowCDModal(false);
     fetchData();
   } catch (e) {
-    console.error("Lỗi chi tiết:", e.response?.data || e);
-    setMsg('❌ ' + (e.response?.data?.message || 'Có lỗi xảy ra'));
+    toast.error(e.response?.data?.message || 'Có lỗi xảy ra khi lưu chi đoàn');
   }
   };
 
@@ -106,28 +110,27 @@ const DKChiDoan = () => {
   const count = parseInt(siSo) || 0;
   
   if (state !== 'Đã khóa' && count > 0) {
-    return alert('Lớp đang hoạt động và còn sinh viên! Vui lòng chuyển sinh viên sang lớp khác trước.');
+    toast.warning('Lớp đang hoạt động và còn sinh viên! Vui lòng chuyển sinh viên sang lớp khác trước.');
+    return;
   }
 
-  // 3. Xác nhận xóa
+  // 2. Xác nhận xóa bằng Toast confirm
   const confirmMsg = state === 'Đã khóa' 
     ? `Chi đoàn [${maChiDoan}] đã khóa. Bạn có chắc chắn muốn xóa vĩnh viễn không?`
     : `Bạn có chắc chắn muốn xóa Chi đoàn [${maChiDoan}] không?`;
 
-  if (!window.confirm(confirmMsg)) return;
+  const confirmed = await toast.confirm(confirmMsg);
+  if (!confirmed) return;
 
   try {
     const config = { headers: H() };
-    // Gọi API xóa (sử dụng đường dẫn đầy đủ để tránh sai sót)
     const r = await axios.delete(`http://localhost:5000/api/doan-khoa/chi-doan/${maChiDoan}`, config);
     
-    setMsg(`✅ ${r.data.message}`);
-    fetchData(); // Tải lại bảng sau khi xóa thành công
+    toast.success(r.data.message || 'Xóa chi đoàn thành công');
+    fetchData();
   } catch (e) {
-    console.error("Lỗi xóa:", e.response?.data || e);
-    setMsg('❌ ' + (e.response?.data?.message || 'Có lỗi xảy ra khi xóa'));
+    toast.error(e.response?.data?.message || 'Có lỗi xảy ra khi xóa chi đoàn');
   }
-  setTimeout(() => setMsg(''), 4000);
 };
 
   return (
@@ -147,8 +150,6 @@ const DKChiDoan = () => {
           Thêm Chi đoàn mới
         </button>
       </div>
-
-      {msg && <div className={`p-3 rounded-xl text-sm font-semibold border flex items-center gap-2 ${msg.includes('✅')?'bg-emerald-50 text-emerald-700 border-emerald-200':'bg-red-50 text-red-700 border-red-200'}`}>{msg}</div>}
 
       {/* TABS CHUYỂN ĐỔI MƯỢT MÀ */}
       <div className="flex gap-4 border-b border-gray-200 mt-2">

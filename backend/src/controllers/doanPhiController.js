@@ -198,13 +198,15 @@ const kichHoatDanhMuc = async (req, res) => {
     if (match) namSau = parseInt(match[1]);
     const ngayHetHan = `${namSau}-05-31`;
 
-    // 3. Insert DoanPhi cho tất cả đoàn viên đang sinh hoạt (nếu chưa có)
+    // 3. Insert DoanPhi cho tất cả đoàn viên đang sinh hoạt (trừ những tài khoản đã tốt nghiệp)
     const sqlInsert = `
       INSERT INTO DoanPhi (_idMucDoanPhi, maDV, trangThai, NgayHetHan)
-      SELECT ?, maDV, 'Chưa nộp', ?
-      FROM DoanVien
-      WHERE trangThaiSH = 'Đang sinh hoạt'
-      AND maDV NOT IN (
+      SELECT ?, dv.maDV, 'Chưa nộp', ?
+      FROM DoanVien dv
+      LEFT JOIN TaiKhoan tk ON dv.maDV = tk.maDV
+      WHERE dv.trangThaiSH = 'Đang sinh hoạt'
+      AND (tk.trangThai IS NULL OR tk.trangThai != 2)
+      AND dv.maDV NOT IN (
         SELECT maDV FROM DoanPhi WHERE _idMucDoanPhi = ?
       )
     `;

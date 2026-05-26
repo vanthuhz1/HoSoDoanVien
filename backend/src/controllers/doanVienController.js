@@ -178,10 +178,17 @@ const createDoanVien = async (req, res) => {
     const hashedPassword = await bcrypt.hash('123456', 10); // Mật khẩu mặc định: 123456
     const idVaiTroMacDinh = 4; // 4 tương ứng với quyền 'Đoàn viên' trong bảng VaiTro
 
+    let initialAccStatus = 1; // Mặc định hoạt động (1)
+    if (data.trangThaiSH === 'Đã tốt nghiệp') {
+      initialAccStatus = 2; // Đã tốt nghiệp
+    } else if (data.trangThaiSH === 'Đã rút hồ sơ') {
+      initialAccStatus = 0; // Bị khóa
+    }
+
     await pool.query(`
-      INSERT INTO TaiKhoan (maDV, email, tenNguoiDung, matKhau, IdVaiTro)
-      VALUES (?, ?, ?, ?, ?)
-    `, [data.maDV, userEmail, data.hoTen, hashedPassword, idVaiTroMacDinh]);
+      INSERT INTO TaiKhoan (maDV, email, tenNguoiDung, matKhau, IdVaiTro, trangThai)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [data.maDV, userEmail, data.hoTen, hashedPassword, idVaiTroMacDinh, initialAccStatus]);
 
     // 4. 🚀 TỰ ĐỘNG ĐỒNG BỘ: Tạo Sổ Đoàn (Khớp chuẩn xác tên cột maSoDoan và trangThai của bạn)
     const maSoDoanTuDong = `SD${data.maDV}`; // Tạo mã sổ đoàn tạm thời không trùng
@@ -260,6 +267,27 @@ const updateDoanVien = async (req, res) => {
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đoàn viên để cập nhật' });
+    }
+
+    // Tự động đồng bộ trạng thái tài khoản hệ thống
+    let newAccStatus = 1; // Mặc định hoạt động (1)
+    if (trangThaiSHClean === 'Đã tốt nghiệp') {
+      newAccStatus = 2; // Đã tốt nghiệp
+    } else if (trangThaiSHClean === 'Đã rút hồ sơ') {
+      newAccStatus = 0; // Khóa
+    }
+    await pool.query('UPDATE TaiKhoan SET trangThai = ? WHERE maDV = ?', [newAccStatus, id]);
+
+    // Tự động dọn dẹp (xóa) các khoản nợ đoàn phí chưa nộp khi tốt nghiệp/rút hồ sơ
+    if (trangThaiSHClean === 'Đã tốt nghiệp' || trangThaiSHClean === 'Đã rút hồ sơ') {
+      await pool.query(`
+        DELETE FROM DoanPhi 
+        WHERE maDV = ? 
+        AND trangThai = 'Chưa nộp'
+        AND _idMucDoanPhi IN (
+          SELECT _idMucDoanPhi FROM DanhMucDoanPhi WHERE trangThai IN ('Đang mở thu', 'Chưa mở')
+        )
+      `, [id]);
     }
 
     return res.json({ success: true, message: 'Cập nhật thông tin thành công' });

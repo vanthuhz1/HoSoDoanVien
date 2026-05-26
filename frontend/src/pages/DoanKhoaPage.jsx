@@ -82,14 +82,6 @@ const DoanKhoaPage = () => {
 
       {/* MAIN */}
       <div className="md:ml-64 flex flex-col flex-1">
-        {/* Topbar */}
-        <div className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-200 px-8 h-14 flex items-center justify-between shadow-sm">
-          <span className="text-sm font-semibold text-gray-500">
-            {NAV.find(n=>n.key===active)?.label}
-          </span>
-          <span className="text-xs text-gray-400">{new Date().toLocaleDateString('vi-VN',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</span>
-        </div>
-
         <main className="flex-1 p-6 max-w-[1280px] w-full mx-auto">
           {active === 'dashboard'  && <DKDashboard />}
           {active === 'hoat-dong'  && <DKHoatDong />}

@@ -129,11 +129,9 @@ const createActivity = async (req, res) => {
     if (diemHoatDong > 10) return res.status(400).json({ success: false, message: 'Điểm hoạt động không được vượt quá 10' });
     const pool = await getConnection();
 
-    // Sử dụng trigger tại database: truyền idHD là '0' hoặc để trống (ở đây ta không cung cấp cột idHD để DB tự lấy DEFAULT '0' và chạy trigger).
-    // Tuy nhiên do lỗi strict của MySQL, ta an toàn nhất là truyền thẳng '0' vào cột idHD.
     await pool.query(
-      `INSERT INTO HoatDongDoan (idHD, tenHD, moTa, ngayToChuc, diaDiem, soLuongMAX, diemHoatDong, trangThaiHD, donViToChuc, soLuongDaDK)
-       VALUES ('0',?,?,?,?,?,?,?,'Đoàn trường',0)`,
+      `INSERT INTO HoatDongDoan (tenHD, moTa, ngayToChuc, diaDiem, soLuongMAX, diemHoatDong, trangThaiHD, donViToChuc, soLuongDaDK)
+       VALUES (?,?,?,?,?,?,?,'Đoàn trường',0)`,
       [tenHD, moTa || '', ngayToChuc, diaDiem || '', soLuongMAX || 50, diemHoatDong || 0, 'Sắp diễn ra']
     );
     return res.status(201).json({ success: true, message: 'Tạo hoạt động thành công' });

@@ -49,3 +49,4 @@ frontend/
 - Ứng dụng chạy ở port 3000
 - Backend API chạy ở port 5000
 - Đảm bảo backend đang chạy trước khi sử dụng frontend
+

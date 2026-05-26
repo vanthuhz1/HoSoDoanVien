@@ -44,14 +44,46 @@ const updateVaiTro = async (req, res) => {
   }
 };
 
-// PUT /api/tai-khoan/:idUser/trang-thai – Khóa/Mở khóa
+// PUT /api/tai-khoan/:idUser/trang-thai – Khóa/Mở khóa/Đã tốt nghiệp
 const updateTrangThai = async (req, res) => {
   try {
     const { idUser } = req.params;
     const { trangThai } = req.body;
     const pool = await getConnection();
+    
+    // 1. Cập nhật trạng thái TaiKhoan
     await pool.query('UPDATE TaiKhoan SET trangThai = ? WHERE idUser = ?', [trangThai, idUser]);
-    return res.json({ success: true, message: trangThai === 1 ? 'Đã mở khóa tài khoản' : 'Đã khóa tài khoản' });
+    
+    // 2. Tự động đồng bộ trạng thái Đoàn viên (nếu tài khoản liên kết với Đoàn viên)
+    const [[user]] = await pool.query('SELECT maDV FROM TaiKhoan WHERE idUser = ?', [idUser]);
+    if (user && user.maDV) {
+      if (parseInt(trangThai) === 2) {
+        await pool.query("UPDATE DoanVien SET trangThaiSH = 'Đã tốt nghiệp' WHERE maDV = ?", [user.maDV]);
+      } else if (parseInt(trangThai) === 1) {
+        await pool.query("UPDATE DoanVien SET trangThaiSH = 'Đang sinh hoạt' WHERE maDV = ?", [user.maDV]);
+      }
+
+      // Tự động dọn dẹp các khoản nợ đoàn phí chưa nộp khi tốt nghiệp (2)
+      if (parseInt(trangThai) === 2) {
+        await pool.query(`
+          DELETE FROM DoanPhi 
+          WHERE maDV = ? 
+          AND trangThai = 'Chưa nộp'
+          AND _idMucDoanPhi IN (
+            SELECT _idMucDoanPhi FROM DanhMucDoanPhi WHERE trangThai IN ('Đang mở thu', 'Chưa mở')
+          )
+        `, [user.maDV]);
+      }
+    }
+
+    let message = 'Đã khóa tài khoản';
+    if (parseInt(trangThai) === 1) {
+      message = 'Đã mở khóa tài khoản';
+    } else if (parseInt(trangThai) === 2) {
+      message = 'Đã chuyển trạng thái tài khoản sang tốt nghiệp';
+    }
+
+    return res.json({ success: true, message });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái', error: error.message });
   }

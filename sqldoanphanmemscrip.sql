@@ -128,7 +128,7 @@ CREATE TABLE ThongBao (
 
 -- 10. BẢNG HOẠT ĐỘNG ĐOÀN
 CREATE TABLE HoatDongDoan (
-    idHD         VARCHAR(20)  PRIMARY KEY DEFAULT '0',
+    idHD         INT          AUTO_INCREMENT PRIMARY KEY,
     tenHD        VARCHAR(200) NOT NULL,
     moTa         TEXT,
     ngayToChuc   DATETIME,
@@ -136,7 +136,7 @@ CREATE TABLE HoatDongDoan (
     soLuongMAX   INT,
     soLuongDaDK  INT          DEFAULT 0,
     diemHoatDong INT          DEFAULT 0,
-    trangThaiHD  ENUM('Chờ duyệt', 'Sắp diễn ra', 'Đang mở', 'Đang diễn ra', 'Đã kết thúc', 'Từ chối', 'Bị từ chối'),
+    trangThaiHD  ENUM('Chờ duyệt', 'Sắp diễn ra', 'Đang mở', 'Đang diễn ra', 'Đã kết thúc', 'Bị từ chối'),
     donViToChuc  VARCHAR(50),
     maKhoa       VARCHAR(15)  NULL,
     Linkdinhkem  TEXT,
@@ -145,24 +145,10 @@ CREATE TABLE HoatDongDoan (
     FOREIGN KEY (maKhoa) REFERENCES Khoa(maKhoa) ON DELETE SET NULL
 );
 
--- Trigger tự động tăng mã idHD theo cấu trúc HD001, HD002...
-DELIMITER //
-CREATE TRIGGER trg_auto_idHD
-BEFORE INSERT ON HoatDongDoan
-FOR EACH ROW
-BEGIN
-    DECLARE next_id INT;
-    IF NEW.idHD = '0' OR NEW.idHD IS NULL THEN
-        SELECT IFNULL(MAX(CAST(SUBSTRING(idHD, 3) AS UNSIGNED)), 0) + 1 INTO next_id FROM HoatDongDoan WHERE idHD LIKE 'HD%';
-        SET NEW.idHD = CONCAT('HD', LPAD(next_id, 3, '0'));
-    END IF;
-END; //
-DELIMITER ;
-
 -- 11. BẢNG DANH SÁCH ĐĂNG KÝ
 CREATE TABLE DanhSachDangKy (
     maDV              VARCHAR(15) NOT NULL,
-    idHD              VARCHAR(20) NOT NULL,
+    idHD              INT         NOT NULL,
     ngayDangKy        DATETIME    DEFAULT CURRENT_TIMESTAMP,
     ThoiGianCheckIn   DATETIME    NULL,
     trangThaiThamGia  ENUM('Đã Đăng Ký', 'Đã tham gia', 'Vắng mặt') DEFAULT 'Đã Đăng Ký',
@@ -176,7 +162,7 @@ CREATE TABLE DanhSachDangKy (
 CREATE TABLE KhieuNai (
     MaKhieuNai   INT          AUTO_INCREMENT PRIMARY KEY,
     maDV         VARCHAR(15)  NOT NULL,
-    idHD         VARCHAR(20)  NOT NULL,
+    idHD         INT          NOT NULL,
     NguoiXuLy   INT          NULL,
     LinkMinhChung VARCHAR(255) NOT NULL,
     TrangThai    VARCHAR(50)  DEFAULT 'Chờ xử lý',   -- 'Chờ xử lý' | 'Đã xử lý' | 'Từ chối'
@@ -354,6 +340,10 @@ INSERT INTO TaiKhoan (maDV, email, tenNguoiDung, matKhau, IdVaiTro) VALUES
 ('2311500049', '2311500049@sv.ute.udn.vn', 'Đỗ Ngọc Bình', '$2b$10$A3q1X4EuGqcKJGAj/q6Mj.t1EsxIXIlxJQrrKUNc4eXJmhZRb6qLu', 4),
 ('2311500050', '2311500050@sv.ute.udn.vn', 'Trần Đức Cường', '$2b$10$A3q1X4EuGqcKJGAj/q6Mj.t1EsxIXIlxJQrrKUNc4eXJmhZRb6qLu', 4);
 
+-- Đồng bộ trạng thái tài khoản mẫu
+UPDATE TaiKhoan SET trangThai = 2 WHERE maDV = '2311500049';
+UPDATE TaiKhoan SET trangThai = 0 WHERE maDV = '2311500050';
+
 -- 6. THÔNG BÁO (50)
 INSERT INTO ThongBao (tieuDe, noiDung, loai, phamVi, nguoiTao) VALUES
 ('Thông báo mở link đăng ký tham gia Chiến dịch Mùa hè xanh', 'Đề nghị các đồng chí Bí thư Chi đoàn đôn đốc đoàn viên thực hiện nghiêm túc. Chi tiết chương trình và kế hoạch cụ thể xem tại văn bản đính kèm.', 'Tin tức', 'Công khai', 4),
@@ -409,85 +399,100 @@ INSERT INTO ThongBao (tieuDe, noiDung, loai, phamVi, nguoiTao) VALUES
 
 -- 7. DANH MỤC ĐOÀN PHÍ (5)
 INSERT INTO DanhMucDoanPhi (namHoc, soTien, trangThai) VALUES
-('2020-2021', 120000, 'Đã đóng lại'),
-('2021-2022', 120000, 'Đã đóng lại'),
 ('2022-2023', 120000, 'Đã đóng lại'),
-('2023-2024', 120000, 'Đang mở thu'),
-('2024-2025', 150000, 'Chưa mở');
+('2023-2024', 120000, 'Đã đóng lại'),
+('2024-2025', 120000, 'Đã đóng lại'),
+('2025-2026', 120000, 'Đang mở thu'),
+('2026-2027', 150000, 'Chưa mở');
 
 -- 8. ĐOÀN PHÍ (50)
-INSERT INTO DoanPhi (_idMucDoanPhi, maDV, trangThai, NgayHetHan) VALUES
-(2, '2011500001', 'Chưa nộp', '2022-05-31'),
-(2, '2011500002', 'Chưa nộp', '2022-05-31'),
-(4, '2011500003', 'Chưa nộp', '2024-05-31'),
-(3, '2011500004', 'Đã nộp', '2023-05-31'),
-(4, '2011500005', 'Đã nộp', '2024-05-31'),
-(3, '2211500006', 'Đã nộp', '2023-05-31'),
-(1, '2211500007', 'Đã nộp', '2021-05-31'),
-(4, '2211500008', 'Chưa nộp', '2024-05-31'),
-(2, '2211500009', 'Đã nộp', '2022-05-31'),
-(1, '2211500010', 'Chưa nộp', '2021-05-31'),
-(1, '2311500011', 'Đã nộp', '2021-05-31'),
-(2, '2311500012', 'Đã nộp', '2022-05-31'),
-(4, '2311500013', 'Đã nộp', '2024-05-31'),
-(1, '2311500014', 'Đã nộp', '2021-05-31'),
-(1, '2311500015', 'Chưa nộp', '2021-05-31'),
-(4, '2311500016', 'Chưa nộp', '2024-05-31'),
-(3, '2311500017', 'Đã nộp', '2023-05-31'),
-(2, '2311500018', 'Chưa nộp', '2022-05-31'),
-(1, '2311500019', 'Chưa nộp', '2021-05-31'),
-(3, '2311500020', 'Đã nộp', '2023-05-31'),
-(4, '2311500021', 'Đã nộp', '2024-05-31'),
-(4, '2311500022', 'Đã nộp', '2024-05-31'),
-(4, '2311500023', 'Chưa nộp', '2024-05-31'),
-(4, '2311500024', 'Chưa nộp', '2024-05-31'),
-(1, '2311500025', 'Chưa nộp', '2021-05-31'),
-(4, '2311500026', 'Chưa nộp', '2024-05-31'),
-(1, '2311500027', 'Chưa nộp', '2021-05-31'),
-(1, '2311500028', 'Chưa nộp', '2021-05-31'),
-(3, '2311500029', 'Chưa nộp', '2023-05-31'),
-(2, '2311500030', 'Chưa nộp', '2022-05-31'),
-(3, '2311500031', 'Chưa nộp', '2023-05-31'),
-(1, '2311500032', 'Đã nộp', '2021-05-31'),
-(1, '2311500033', 'Chưa nộp', '2021-05-31'),
-(4, '2311500034', 'Chưa nộp', '2024-05-31'),
-(4, '2311500035', 'Chưa nộp', '2024-05-31'),
-(1, '2311500036', 'Đã nộp', '2021-05-31'),
-(1, '2311500037', 'Chưa nộp', '2021-05-31'),
-(2, '2311500038', 'Đã nộp', '2022-05-31'),
-(3, '2311500039', 'Chưa nộp', '2023-05-31'),
-(2, '2311500040', 'Đã nộp', '2022-05-31'),
-(1, '2311500041', 'Chưa nộp', '2021-05-31'),
-(4, '2311500042', 'Đã nộp', '2024-05-31'),
-(1, '2311500043', 'Chưa nộp', '2021-05-31'),
-(2, '2311500044', 'Chưa nộp', '2022-05-31'),
-(1, '2311500045', 'Chưa nộp', '2021-05-31'),
-(2, '2311500046', 'Chưa nộp', '2022-05-31'),
-(2, '2311500047', 'Đã nộp', '2022-05-31'),
-(3, '2311500048', 'Chưa nộp', '2023-05-31'),
-(2, '2311500049', 'Đã nộp', '2022-05-31'),
-(1, '2311500050', 'Chưa nộp', '2021-05-31');
+INSERT INTO DoanPhi (_idDoanPhi, _idMucDoanPhi, maDV, trangThai, NgayHetHan, phuongThucThanhToan, maGiaoDich, ThoiGianThanhToan) VALUES
+(1, 2, '2011500001', 'Chưa nộp', '2024-05-31', NULL, NULL, NULL),
+(2, 2, '2011500002', 'Chưa nộp', '2024-05-31', NULL, NULL, NULL),
+(3, 4, '2011500003', 'Chưa nộp', '2026-06-30', NULL, NULL, NULL),
+(4, 3, '2011500004', 'Đã nộp', '2025-05-31', 'Chuyển khoản', 'DP000004', '2025-05-16 08:30:00'),
+(5, 4, '2011500005', 'Đã nộp', '2026-06-30', 'Chuyển khoản', 'DP000005', '2026-06-15 08:30:00'),
+(6, 3, '2211500006', 'Đã nộp', '2025-05-31', 'Chuyển khoản', 'DP000006', '2025-05-16 08:30:00'),
+(7, 1, '2211500007', 'Đã nộp', '2023-05-31', 'Chuyển khoản', 'DP000007', '2023-05-16 08:30:00'),
+(8, 4, '2211500008', 'Chưa nộp', '2026-06-30', NULL, NULL, NULL),
+(9, 2, '2211500009', 'Đã nộp', '2024-05-31', 'Chuyển khoản', 'DP000009', '2024-05-16 08:30:00'),
+(10, 1, '2211500010', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(11, 1, '2311500011', 'Đã nộp', '2023-05-31', 'Chuyển khoản', 'DP000011', '2023-05-16 08:30:00'),
+(12, 2, '2311500012', 'Đã nộp', '2024-05-31', 'Chuyển khoản', 'DP000012', '2024-05-16 08:30:00'),
+(13, 4, '2311500013', 'Đã nộp', '2026-06-30', 'Chuyển khoản', 'DP000013', '2026-06-15 08:30:00'),
+(14, 1, '2311500014', 'Đã nộp', '2023-05-31', 'Chuyển khoản', 'DP000014', '2023-05-16 08:30:00'),
+(15, 1, '2311500015', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(16, 4, '2311500016', 'Chưa nộp', '2026-06-30', NULL, NULL, NULL),
+(17, 3, '2311500017', 'Đã nộp', '2025-05-31', 'Chuyển khoản', 'DP000017', '2025-05-16 08:30:00'),
+(18, 2, '2311500018', 'Chưa nộp', '2024-05-31', NULL, NULL, NULL),
+(19, 1, '2311500019', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(20, 3, '2311500020', 'Đã nộp', '2025-05-31', 'Chuyển khoản', 'DP000020', '2025-05-16 08:30:00'),
+(21, 4, '2311500021', 'Đã nộp', '2026-06-30', 'Chuyển khoản', 'DP000021', '2026-06-15 08:30:00'),
+(22, 4, '2311500022', 'Đã nộp', '2026-06-30', 'Chuyển khoản', 'DP000022', '2026-06-15 08:30:00'),
+(23, 4, '2311500023', 'Chưa nộp', '2026-06-30', NULL, NULL, NULL),
+(24, 4, '2311500024', 'Chưa nộp', '2026-06-30', NULL, NULL, NULL),
+(25, 1, '2311500025', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(26, 4, '2311500026', 'Chưa nộp', '2026-06-30', NULL, NULL, NULL),
+(27, 1, '2311500027', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(28, 1, '2311500028', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(29, 3, '2311500029', 'Chưa nộp', '2025-05-31', NULL, NULL, NULL),
+(30, 2, '2311500030', 'Chưa nộp', '2024-05-31', NULL, NULL, NULL),
+(31, 3, '2311500031', 'Chưa nộp', '2025-05-31', NULL, NULL, NULL),
+(32, 1, '2311500032', 'Đã nộp', '2023-05-31', 'Chuyển khoản', 'DP000032', '2023-05-16 08:30:00'),
+(33, 1, '2311500033', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(34, 4, '2311500034', 'Chưa nộp', '2026-06-30', NULL, NULL, NULL),
+(35, 4, '2311500035', 'Chưa nộp', '2026-06-30', NULL, NULL, NULL),
+(36, 1, '2311500036', 'Đã nộp', '2023-05-31', 'Chuyển khoản', 'DP000036', '2023-05-16 08:30:00'),
+(37, 1, '2311500037', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(38, 2, '2311500038', 'Đã nộp', '2024-05-31', 'Chuyển khoản', 'DP000038', '2024-05-16 08:30:00'),
+(39, 3, '2311500039', 'Chưa nộp', '2025-05-31', NULL, NULL, NULL),
+(40, 2, '2311500040', 'Đã nộp', '2024-05-31', 'Chuyển khoản', 'DP000040', '2024-05-16 08:30:00'),
+(41, 1, '2311500041', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(42, 4, '2311500042', 'Đã nộp', '2026-06-30', 'Chuyển khoản', 'DP000042', '2026-06-15 08:30:00'),
+(43, 1, '2311500043', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(44, 2, '2311500044', 'Chưa nộp', '2024-05-31', NULL, NULL, NULL),
+(45, 1, '2311500045', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL),
+(46, 2, '2311500046', 'Chưa nộp', '2024-05-31', NULL, NULL, NULL),
+(47, 2, '2311500047', 'Đã nộp', '2024-05-31', 'Chuyển khoản', 'DP000047', '2024-05-16 08:30:00'),
+(48, 3, '2311500048', 'Chưa nộp', '2025-05-31', NULL, NULL, NULL),
+(49, 2, '2311500049', 'Đã nộp', '2024-05-31', 'Chuyển khoản', 'DP000049', '2024-05-16 08:30:00'),
+(50, 1, '2311500050', 'Chưa nộp', '2023-05-31', NULL, NULL, NULL);
 
--- 9. HOẠT ĐỘNG ĐOÀN (6)
-INSERT INTO HoatDongDoan (idHD, tenHD, moTa, ngayToChuc, diaDiem, soLuongMAX, diemHoatDong, trangThaiHD, donViToChuc, maKhoa) VALUES
-('HD005', 'Cuộc thi Olympic Tin học lần 1', 'Đoàn trường/khoa tổ chức Cuộc thi Olympic Tin học lần 1 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-07-10 08:00:00', 'Hội trường C', 109, 8, 'Chờ duyệt', 'Đoàn khoa', 'CNTT'),
-('HD007', 'Hiến máu tình nguyện đợt 1', 'Đoàn trường/khoa tổ chức Hiến máu tình nguyện đợt 1 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-02-03 08:00:00', 'Hội trường C', 126, 19, 'Chờ duyệt', 'Đoàn khoa', 'CNTT'),
-('HD019', 'Cuộc thi Olympic Tin học', 'Đoàn trường/khoa tổ chức Cuộc thi Olympic Tin học nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-05-06 08:00:00', 'Hội trường B', 120, 17, 'Đã kết thúc', 'Đoàn trường', NULL),
-('HD026', 'Cuộc thi hùng biện Tiếng Anh lần 5', 'Đoàn trường/khoa tổ chức Cuộc thi hùng biện Tiếng Anh lần 5 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-04-13 08:00:00', 'Hội trường B', 115, 8, 'Từ chối', 'Đoàn khoa', 'CK'),
-('HD027', 'Cuộc thi Sinh viên NCKH lần 2', 'Đoàn trường/khoa tổ chức Cuộc thi Sinh viên NCKH lần 2 nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2025-11-05 08:00:00', 'Hội trường E', 145, 11, 'Chờ duyệt', 'Đoàn trường', NULL),
-('HD034', 'Ngày hội giao lưu văn hóa quốc tế', 'Đoàn trường/khoa tổ chức Ngày hội giao lưu văn hóa quốc tế nhằm nâng cao phong trào thi đua và kỹ năng cho sinh viên. Đề nghị các đoàn viên đăng ký tích cực.', '2026-12-25 08:00:00', 'Hội trường E', 127, 5, 'Đang mở', 'Đoàn khoa', 'CNTT'),
-('HD035', 'Hoạt động test Khoa CNTT đang mở (Hôm nay)', 'Mô tả test', '2026-05-16 08:00:00', 'Hội trường A', 100, 10, 'Đang mở', 'Đoàn khoa', 'CNTT'),
-('HD036', 'Hoạt động test Đoàn trường đang mở (Hôm nay)', 'Mô tả test', '2026-05-16 09:00:00', 'Hội trường B', 100, 10, 'Đang mở', 'Đoàn trường', NULL),
-('HD037', 'Hoạt động test Khoa KT đang mở (Hôm nay)', 'Mô tả test', '2026-05-16 10:00:00', 'Hội trường C', 100, 10, 'Đang mở', 'Đoàn khoa', 'KT'),
-('HD038', 'Hoạt động test Khoa CNTT đang diễn ra (Hôm nay)', 'Mô tả test', '2026-05-16 11:00:00', 'Hội trường D', 100, 10, 'Đang diễn ra', 'Đoàn khoa', 'CNTT'),
-('HD039', 'Hoạt động test khiếu nại 1 (Bị vắng mặt)', 'Hoạt động đã kết thúc trong vòng 7 ngày', '2026-05-14 08:00:00', 'Hội trường A', 100, 5, 'Đã kết thúc', 'Đoàn khoa', 'CNTT'),
-('HD040', 'Hoạt động test khiếu nại 2 (Đã tham gia)', 'Hoạt động đã kết thúc trong vòng 7 ngày', '2026-05-15 09:00:00', 'Hội trường B', 100, 5, 'Đã kết thúc', 'Đoàn trường', NULL);
+-- 9. HOẠT ĐỘNG ĐOÀN (20)
+INSERT INTO HoatDongDoan (idHD, tenHD, moTa, ngayToChuc, diaDiem, soLuongMAX, soLuongDaDK, diemHoatDong, trangThaiHD, donViToChuc, maKhoa, Linkdinhkem) VALUES
+(1, 'Chiến dịch tình nguyện Mùa hè xanh 2026', 'Chiến dịch tình nguyện hè cấp trường nhằm hỗ trợ xây dựng nông thôn mới, chuyển giao khoa học kỹ thuật và tổ chức sinh hoạt hè cho thiếu nhi tại địa bàn vùng sâu vùng xa.', '2026-07-05 07:30:00', 'Huyện Kon Plông, Tỉnh Kon Tum', 120, 3, 15, 'Đang mở', 'Đoàn trường', NULL, 'Sinh viên tự chuẩn bị đồ cá nhân, mặc áo Đoàn khi tham gia.'),
+(2, 'Ngày hội Hiến máu nhân đạo - Chủ nhật Đỏ 2026', 'Chương trình hiến máu nhân đạo thường niên phối hợp cùng Bệnh viện Trung ương Huế nhằm bổ sung lượng máu dự phòng cho dịp hè.', '2026-06-14 07:00:00', 'Sảnh Hội trường lớn khu A', 200, 1, 10, 'Đang mở', 'Đoàn trường', NULL, 'Nhớ ăn sáng trước khi hiến máu và mang theo CCCD.'),
+(3, 'Hội thảo Hướng nghiệp và Ngày hội tuyển dụng Công nghệ 2026', 'Cơ hội tiếp xúc trực tiếp với các nhà tuyển dụng công nghệ lớn tại Đà Nẵng, tìm kiếm cơ hội thực tập và việc làm cho sinh viên CNTT.', '2026-06-20 08:00:00', 'Tầng 3 nhà học C', 150, 0, 5, 'Đang mở', 'Đoàn khoa', 'CNTT', 'Trang phục lịch sự, khuyến khích mang theo CV.'),
+(4, 'Giải bóng đá Sinh viên Đại học Sư phạm Kỹ thuật 2026', 'Giải bóng đá thường niên nhằm rèn luyện sức khỏe, tinh thần đoàn kết và tuyển chọn các nhân tố xuất sắc cho đội tuyển của trường.', '2026-06-25 15:00:00', 'Sân bóng đá cỏ nhân tạo UTE', 300, 0, 8, 'Đang mở', 'Đoàn trường', NULL, 'Mỗi Chi đoàn đăng ký danh sách tối đa 15 vận động viên.'),
+(5, 'Cuộc thi Olympic Tin học Sinh viên UTE 2026', 'Cuộc thi tìm kiếm tài năng lập trình giải thuật trên nền tảng Codeforces/Kattis, chuẩn bị cho đội tuyển tham dự Olympic toàn quốc.', '2026-06-18 08:00:00', 'Phòng máy tầng 4 nhà học E', 100, 0, 10, 'Đang mở', 'Đoàn khoa', 'CNTT', 'Laptop cá nhân, kết nối internet đầy đủ.'),
+(6, 'Ngày hội Sách và Lan tỏa Văn hóa đọc UTE 2026', 'Chương trình quyên góp sách cũ xây dựng tủ sách vùng cao và ngày hội giao lưu tác giả - tác phẩm ý nghĩa.', '2026-06-05 08:30:00', 'Thư viện Trung tâm UTE', 150, 0, 5, 'Đang mở', 'Đoàn trường', NULL, 'Khuyến khích mỗi cá nhân đóng góp ít nhất 2 cuốn sách.'),
+(7, 'Lớp tập huấn Kỹ năng Nghiệp vụ Cán bộ Đoàn 2026', 'Chương trình tập huấn bắt buộc dành cho Ban chấp hành các Chi đoàn về công tác quản lý đoàn viên, tổ chức sinh hoạt chi đoàn.', '2026-06-10 08:00:00', 'Hội trường B', 120, 0, 5, 'Đang mở', 'Đoàn trường', NULL, 'Tất cả cán bộ Đoàn mang theo sổ tay và mặc áo thanh niên Việt Nam.'),
+(8, 'Cuộc thi Hùng biện Tiếng Anh - UTE English Speaking Contest 2026', 'Chủ đề năm nay: "Youth and Digital Transformation". Tạo môi trường rèn luyện tiếng Anh năng động và tự tin cho sinh viên toàn trường.', '2026-06-22 13:30:00', 'Hội trường C', 130, 0, 8, 'Đang mở', 'Đoàn khoa', 'NN', 'Đăng ký bài thuyết trình trước ngày 15/06/2026.'),
+(9, 'Ngày Chủ nhật xanh - Chung tay bảo vệ môi trường học đường', 'Chiến dịch dọn dẹp vệ sinh, trồng cây xanh và phân loại rác thải tại khuôn viên trường học nhằm hưởng ứng Ngày môi trường thế giới.', '2026-06-07 07:00:00', 'Khuôn viên toàn trường', 250, 0, 5, 'Đang mở', 'Đoàn trường', NULL, 'Mang theo bao tay lao động cá nhân nếu có.'),
+(10, 'Hội thảo Nghiên cứu Khoa học và Khởi nghiệp trong Sinh viên', 'Báo cáo các đề tài nghiên cứu khoa học xuất sắc của sinh viên năm học vừa qua và kết nối các dự án khởi nghiệp tiềm năng.', '2026-06-28 08:00:00', 'Hội trường E', 180, 0, 10, 'Đang mở', 'Đoàn khoa', 'CNTT', NULL),
+(11, 'Lễ Tuyên dương Sinh viên 5 tốt cấp Trường năm học 2025-2026', 'Lễ tuyên dương và vinh danh những cá nhân đạt danh hiệu Sinh viên 5 tốt xuất sắc cấp Trường.', '2026-06-12 18:30:00', 'Hội trường A', 150, 0, 5, 'Đang mở', 'Đoàn trường', NULL, 'Trang phục trang trọng (nam áo sơ mi trắng, nữ áo dài/sơ mi).'),
+(12, 'Giải chạy bộ việt dã "UTE Run for Youth 2026"', 'Giải chạy bộ cự ly 5km quanh bán đảo Sơn Trà nhằm chào mừng ngày truyền thống nhà trường.', '2026-06-01 05:30:00', 'Công viên Biển Đông, Đà Nẵng', 300, 0, 5, 'Đang mở', 'Đoàn trường', NULL, 'Tập trung đúng giờ, mang giày thể thao.'),
+(13, 'Hội thảo Thiết kế Vi mạch Bán dẫn và Xu hướng Công nghệ tương lai', 'Chương trình giới thiệu về ngành công nghiệp vi mạch bán dẫn đang phát triển mạnh mẽ và các cơ hội nghề nghiệp dành cho sinh viên Điện tử.', '2026-07-10 09:00:00', 'Hội trường C', 130, 0, 5, 'Sắp diễn ra', 'Đoàn khoa', 'DT', 'Chờ mở cổng đăng ký vào ngày 01/07/2026.'),
+(14, 'Cuộc thi Thiết kế xe tiết kiệm nhiên liệu Shell Eco-marathon 2026', 'Cuộc thi thiết kế, chế tạo xe ô tô mô hình tiết kiệm nhiên liệu của Khoa Cơ khí.', '2026-07-20 08:00:00', 'Xưởng thực hành Khoa Cơ khí', 80, 0, 8, 'Chờ duyệt', 'Đoàn khoa', 'CK', 'Chờ phê duyệt kế hoạch chi tiết từ Ban Giám hiệu.'),
+(15, 'Tập huấn kỹ năng giao tiếp và làm việc nhóm trong thời đại số', 'Lớp kỹ năng mềm bổ ích giúp sinh viên tự tin hơn trong các dự án học tập và công việc sau này.', '2026-06-26 14:00:00', 'Hội trường B', 120, 0, 5, 'Chờ duyệt', 'Đoàn khoa', 'NN', NULL),
+(16, 'Hội thảo kỹ năng viết CV và phỏng vấn xin việc cùng chuyên gia HR', 'Khóa học ngắn hướng dẫn cách chuẩn bị một CV ấn tượng và kỹ năng trả lời phỏng vấn chinh phục các nhà tuyển dụng khó tính.', '2026-05-26 14:00:00', 'Hội trường A', 100, 1, 5, 'Đang diễn ra', 'Đoàn khoa', 'KT', 'Hoạt động đang diễn ra ngày hôm nay.'),
+(17, 'Cuộc thi lập trình thuật toán UTE-Code 2026', 'Giải đấu lập trình thường niên dành cho sinh viên đam mê CNTT.', '2026-05-22 08:00:00', 'Phòng máy tầng 4 nhà học E', 100, 5, 10, 'Đã kết thúc', 'Đoàn khoa', 'CNTT', 'Đã kết thúc và chốt danh sách cộng điểm.'),
+(18, 'Ngày hội hiến máu nhân đạo đợt 1 - năm học 2025-2026', 'Đợt hiến máu nhân đạo đầu tiên của năm học.', '2026-05-24 07:30:00', 'Sảnh Hội trường lớn khu A', 200, 0, 10, 'Đã kết thúc', 'Đoàn trường', NULL, 'Đã hoàn thành.'),
+(19, 'Giải chạy bộ Việt dã chào mừng Ngày giải phóng miền Nam 30/4', 'Giải chạy thường niên được tổ chức nhằm giáo dục truyền thống cách mạng.', '2026-04-30 06:00:00', 'Khuôn viên trường UTE', 300, 0, 10, 'Đã kết thúc', 'Đoàn trường', NULL, 'Đã hoàn thành và cộng điểm tích lũy.'),
+(20, 'Cuộc thi leo núi dã ngoại khám phá núi Sơn Trà', 'Chương trình dã ngoại cuối tuần kết hợp nhặt rác bảo vệ môi trường.', '2026-06-01 07:00:00', 'Bán đảo Sơn Trà', 50, 0, 5, 'Bị từ chối', 'Đoàn khoa', 'KT', NULL);
 
--- 10. DANH SÁCH ĐĂNG KÝ (50)
-INSERT IGNORE INTO DanhSachDangKy (maDV, idHD, trangThaiThamGia, trangThaiCongDiem) VALUES
-('2311500048', 'HD034', 'Đã Đăng Ký', 'Chưa cộng'),
-('2311500050', 'HD039', 'Vắng mặt', 'Chưa cộng'),
-('2311500050', 'HD040', 'Đã tham gia', 'Đã tích lũy');
+-- 10. DANH SÁCH ĐĂNG KÝ (10)
+INSERT IGNORE INTO DanhSachDangKy (maDV, idHD, ngayDangKy, ThoiGianCheckIn, trangThaiThamGia, trangThaiCongDiem) VALUES
+('2311500011', 1, '2026-05-26 08:00:00', NULL, 'Đã Đăng Ký', 'Chưa cộng'),
+('2311500011', 2, '2026-05-26 09:00:00', NULL, 'Đã Đăng Ký', 'Chưa cộng'),
+('2311500011', 16, '2026-05-26 08:30:00', '2026-05-26 14:15:00', 'Đã tham gia', 'Đã tích lũy'),
+('2311500011', 17, '2026-05-20 10:00:00', '2026-05-22 08:15:00', 'Đã tham gia', 'Đã tích lũy'),
+('2311500012', 1, '2026-05-26 08:15:00', NULL, 'Đã Đăng Ký', 'Chưa cộng'),
+('2311500012', 17, '2026-05-20 10:30:00', '2026-05-22 08:10:00', 'Đã tham gia', 'Đã tích lũy'),
+('2311500013', 1, '2026-05-26 08:20:00', NULL, 'Đã Đăng Ký', 'Chưa cộng'),
+('2311500013', 17, '2026-05-20 11:00:00', NULL, 'Vắng mặt', 'Chưa cộng'),
+('2311500014', 17, '2026-05-21 09:15:00', NULL, 'Vắng mặt', 'Chưa cộng'),
+('2311500015', 17, '2026-05-21 14:00:00', '2026-05-22 08:20:00', 'Đã tham gia', 'Đã tích lũy');
 
 
 -- 11. SỔ ĐOÀN (50)
@@ -596,7 +601,11 @@ INSERT INTO TieuSu (maDV, tuThoiGian, denThoiGian, donViCongTac, chucVu) VALUES
 ('2311500049', '2018-04-21', NULL, 'Trường Đại học SPKT', 'Đoàn viên'),
 ('2311500050', '2018-03-13', NULL, 'Trường Đại học SPKT', 'Đoàn viên');
 
--- 13. KHIẾU NẠI (5)
+-- 13. KHIẾU NẠI (3)
+INSERT INTO KhieuNai (maDV, idHD, NguoiXuLy, LinkMinhChung, TrangThai, loaiKhieuNai, diemCongThem, NgayTao, GhiChu) VALUES
+('2311500013', 17, NULL, '/uploads/minhchung-2311500050-1778922336878-794934185.png', 'Chờ xử lý', 'Vắng mặt', 0, '2026-05-24 10:00:00', 'Em có đi học và check-in đầy đủ tại phòng máy nhưng hệ thống ghi nhận vắng mặt. Kính mong thầy cô xem xét lại ảnh chụp minh chứng.'),
+('2311500014', 17, 1, '/uploads/minhchung-2311500050-1778923945715-965548558.png', 'Đã xử lý', 'Vắng mặt', 10, '2026-05-23 09:30:00', 'Đã duyệt minh chứng check-in và cộng 10 điểm rèn luyện.'),
+('2311500011', 17, 1, '/uploads/minhchung-2311500050-1778922336875-546385947.jpg', 'Từ chối', 'Sai vai trò', 0, '2026-05-23 11:00:00', 'Ảnh minh chứng bị mờ, không thấy rõ thông tin check-in và khuôn mặt của đoàn viên.');
 
 -- ============================================================
 -- BƯỚC 4: TẠO EVENT TỰ ĐỘNG CẬP NHẬT TRẠNG THÁI HOẠT ĐỘNG

@@ -62,6 +62,12 @@ const login = async (req, res) => {
     const user = users[0];
 
     // Kiểm tra trạng thái tài khoản
+    if (user.trangThai === 2 || user.trangThai === '2') {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản đã tốt nghiệp. Bạn không thể đăng nhập!'
+      });
+    }
     if (user.trangThai !== 1 && user.trangThai !== '1') {
       return res.status(403).json({
         success: false,

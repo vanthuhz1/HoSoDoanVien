@@ -151,13 +151,24 @@ const AdminPhanQuyen = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const toggleLock = async (user) => {
-    const newStatus = user.trangThai === 1 ? 0 : 1;
+    const isLocked = user.trangThai === 0 || user.trangThai === '0';
+    const newStatus = isLocked ? 1 : 0;
     const action = newStatus === 0 ? 'Khóa' : 'Mở khóa';
     const confirmed = await toast.confirm(`${action} tài khoản "${user.tenNguoiDung}"?`);
     if (!confirmed) return;
     try {
       await axios.put(`${API_URL}/tai-khoan/${user.idUser}/trang-thai`, { trangThai: newStatus }, { headers: getHeaders() });
       toast.success(`Đã ${action.toLowerCase()} tài khoản thành công!`);
+      fetchData();
+    } catch (err) { toast.error('Lỗi cập nhật'); }
+  };
+
+  const markAsGraduated = async (user) => {
+    const confirmed = await toast.confirm(`Đánh dấu tốt nghiệp cho tài khoản "${user.tenNguoiDung}"?`);
+    if (!confirmed) return;
+    try {
+      await axios.put(`${API_URL}/tai-khoan/${user.idUser}/trang-thai`, { trangThai: 2 }, { headers: getHeaders() });
+      toast.success(`Đã cập nhật trạng thái tốt nghiệp thành công!`);
       fetchData();
     } catch (err) { toast.error('Lỗi cập nhật'); }
   };
@@ -255,9 +266,26 @@ const AdminPhanQuyen = () => {
                     </td>
                     <td className="p-4 text-gray-400 text-xs">{user.ngayTao ? new Date(user.ngayTao).toLocaleDateString('vi-VN') : '—'}</td>
                     <td className="p-4">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-semibold ${isLocked ? 'bg-red-50 text-red-600 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isLocked ? 'bg-red-500' : 'bg-green-500'}`}></span>
-                        {isLocked ? 'Đã khóa' : 'Hoạt động'}
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-semibold ${
+                        isLocked 
+                          ? 'bg-red-50 text-red-600 border-red-200' 
+                          : (user.trangThai === 2 || user.trangThai === '2')
+                            ? 'bg-purple-50 text-purple-700 border-purple-200'
+                            : 'bg-green-50 text-green-700 border-green-200'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          isLocked 
+                            ? 'bg-red-500' 
+                            : (user.trangThai === 2 || user.trangThai === '2')
+                              ? 'bg-purple-500'
+                              : 'bg-green-500'
+                        }`}></span>
+                        {isLocked 
+                          ? 'Đã khóa' 
+                          : (user.trangThai === 2 || user.trangThai === '2')
+                            ? 'Đã tốt nghiệp'
+                            : 'Hoạt động'
+                        }
                       </span>
                     </td>
                     <td className="p-4 text-right">
@@ -266,6 +294,13 @@ const AdminPhanQuyen = () => {
                           className="text-gray-400 hover:text-[#004581] p-1 transition-colors" title="Đổi vai trò">
                           <span className="material-symbols-outlined text-sm">manage_accounts</span>
                         </button>
+                        {user.trangThai !== 2 && user.trangThai !== '2' && (
+                          <button onClick={() => markAsGraduated(user)}
+                            className="text-gray-400 hover:text-purple-600 p-1 transition-colors"
+                            title="Đánh dấu tốt nghiệp">
+                            <span className="material-symbols-outlined text-sm">school</span>
+                          </button>
+                        )}
                         <button onClick={() => toggleLock(user)}
                           className={`p-1 transition-colors ${isLocked ? 'text-green-500 hover:text-green-700' : 'text-gray-400 hover:text-red-500'}`}
                           title={isLocked ? 'Mở khóa' : 'Khóa tài khoản'}>

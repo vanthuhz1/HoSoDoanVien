@@ -17,11 +17,11 @@ const TT = {
   'Đã từ chối': 'bg-red-50 text-red-600 border-red-200',
 };
 const Badge = ({ tt }) => (
-  <span className={`inline-flex px-2 py-0.5 rounded-full border text-xs font-semibold ${TT[tt] || 'bg-gray-50 text-gray-500 border-gray-200'}`}>{tt}</span>
+  <span className={`inline-flex px-2 py-0.5 rounded-full border text-xs font-semibold whitespace-nowrap ${TT[tt] || 'bg-gray-50 text-gray-500 border-gray-200'}`}>{tt}</span>
 );
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
-const ALL_TABS = ['Tất cả', 'Chờ duyệt', 'Đang mở', 'Đã kết thúc'];
+const ALL_TABS = ['Tất cả', 'Chờ duyệt', 'Đang mở', 'Đang diễn ra', 'Đã kết thúc'];
 
 /* ── Modal tạo hoạt động ── */
 const TaoModal = ({ onClose, onSaved }) => {
@@ -158,16 +158,16 @@ const DuyetHoatDongPanel = ({ items, onDuyet, onTuChoi, loading }) => {
             {/* Actions */}
             <div className="flex flex-col gap-2 flex-shrink-0">
               <button onClick={() => onDuyet(hd)}
-                className="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-bold hover:bg-green-600 active:scale-95 transition-all flex items-center gap-2 shadow-sm">
-                <span className="material-symbols-outlined text-base fill">check_circle</span>Duyệt
+                className="w-32 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-sm">
+                <span className="material-symbols-outlined text-sm font-semibold">check</span>Duyệt
               </button>
               <button onClick={() => onTuChoi(hd)}
-                className="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-100 active:scale-95 transition-all flex items-center gap-2">
-                <span className="material-symbols-outlined text-base">cancel</span>Từ chối
+                className="w-32 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-sm">
+                <span className="material-symbols-outlined text-sm font-semibold">close</span>Từ chối
               </button>
               <button onClick={() => setExpanded(expanded === hd.idHD ? null : hd.idHD)}
-                className="px-4 py-2 border border-gray-200 text-gray-500 rounded-xl text-xs font-medium hover:bg-gray-50 flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">{expanded === hd.idHD ? 'expand_less' : 'expand_more'}</span>
+                className="w-32 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5">
+                <span className="material-symbols-outlined text-sm font-semibold">{expanded === hd.idHD ? 'expand_less' : 'expand_more'}</span>
                 {expanded === hd.idHD ? 'Thu gọn' : 'Chi tiết'}
               </button>
             </div>
@@ -249,35 +249,39 @@ const MinhChungView = ({ act, onBack }) => {
         </button>
       </div>
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm text-left">
+        <table className="w-full text-sm text-left table-auto">
           <thead className="bg-gray-50 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase">
             <tr>
-              <th className="p-4 w-10"><input type="checkbox" onChange={toggleAll} checked={sel.length === list.length && list.length > 0} className="rounded" /></th>
-              <th className="p-4">Họ tên</th><th className="p-4">Mã ĐV</th>
-              <th className="p-4">Khoa</th><th className="p-4">Minh chứng</th>
-              <th className="p-4">Trạng thái</th><th className="p-4 text-right">Thao tác</th>
+              <th className="px-3.5 py-2.5 w-10"><input type="checkbox" onChange={toggleAll} checked={sel.length === list.length && list.length > 0} className="rounded" /></th>
+              <th className="px-3.5 py-2.5">Họ tên</th><th className="px-3.5 py-2.5">Mã ĐV</th>
+              <th className="px-3.5 py-2.5">Khoa</th><th className="px-3.5 py-2.5">Minh chứng</th>
+              <th className="px-3.5 py-2.5">Trạng thái</th><th className="px-3.5 py-2.5 text-right w-[90px] min-w-[90px]">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {loading ? <tr><td colSpan={7} className="p-8 text-center"><span className="material-symbols-outlined animate-spin text-4xl text-gray-300">refresh</span></td></tr>
-              : list.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-gray-400">Không có minh chứng chờ duyệt</td></tr>
+            {loading ? <tr><td colSpan={7} className="px-3.5 py-8 text-center"><span className="material-symbols-outlined animate-spin text-4xl text-gray-300">refresh</span></td></tr>
+              : list.length === 0 ? <tr><td colSpan={7} className="px-3.5 py-8 text-center text-gray-400">Không có minh chứng chờ duyệt</td></tr>
                 : list.map(dk => (
                   <tr key={dk.maDV} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4"><input type="checkbox" checked={sel.includes(dk.maDV)} onChange={() => toggleSel(dk.maDV)} className="rounded" /></td>
-                    <td className="p-4 font-semibold text-gray-800">{dk.hoTen}</td>
-                    <td className="p-4 font-mono text-xs text-gray-400">{dk.maDV}</td>
-                    <td className="p-4 text-gray-500">{dk.tenKhoa || '—'}</td>
-                    <td className="p-4">
+                    <td className="px-3.5 py-2.5"><input type="checkbox" checked={sel.includes(dk.maDV)} onChange={() => toggleSel(dk.maDV)} className="rounded" /></td>
+                    <td className="px-3.5 py-2.5 font-semibold text-gray-800">{dk.hoTen}</td>
+                    <td className="px-3.5 py-2.5 font-mono text-xs text-gray-400">{dk.maDV}</td>
+                    <td className="px-3.5 py-2.5 text-gray-500">{dk.tenKhoa || '—'}</td>
+                    <td className="px-3.5 py-2.5">
                       {dk.minhChung ? <a href={dk.minhChung} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1 text-[#004581] hover:underline text-xs font-medium">
                         <span className="material-symbols-outlined text-sm">image</span>Xem ảnh</a>
                         : <span className="text-gray-300 text-xs">Không có</span>}
                     </td>
-                    <td className="p-4"><Badge tt={dk.trangThaiThamGia} /></td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => { setSel([dk.maDV]); setTimeout(() => doAction('Đã tham gia'), 0); }} className="px-2 py-1 bg-green-500 text-white rounded text-xs font-semibold hover:bg-green-600">Duyệt</button>
-                        <button onClick={() => setTC(dk)} className="px-2 py-1 bg-red-500 text-white rounded text-xs font-semibold hover:bg-red-600">Từ chối</button>
+                    <td className="px-3.5 py-2.5"><Badge tt={dk.trangThaiThamGia} /></td>
+                    <td className="px-3.5 py-2.5 text-right w-[90px] min-w-[90px]">
+                      <div className="flex items-center justify-end gap-1.5 w-[90px] min-w-[90px]">
+                        <button onClick={() => { setSel([dk.maDV]); setTimeout(() => doAction('Đã tham gia'), 0); }} title="Duyệt minh chứng" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 transition-all active:scale-95 flex-shrink-0">
+                          <span className="material-symbols-outlined text-base font-semibold">check</span>
+                        </button>
+                        <button onClick={() => setTC(dk)} title="Từ chối minh chứng" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-all active:scale-95 flex-shrink-0">
+                          <span className="material-symbols-outlined text-base font-semibold">close</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -395,17 +399,17 @@ const AdminHoatDong = () => {
 
           {/* Table */}
           <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left table-auto">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-wider">Tên hoạt động</th>
-                  <th className="px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-wider">Ngày</th>
-                  <th className="px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-wider">Địa điểm</th>
-                  <th className="px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">SL</th>
-                  <th className="px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Điểm</th>
-                  <th className="px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn vị</th>
-                  <th className="px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-wider">Trạng thái</th>
-                  <th className="px-5 py-3.5 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Thao tác</th>
+                <tr className="border-b border-gray-100 bg-gray-50/50">
+                  <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Tên hoạt động</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Ngày</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Địa điểm</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">SL</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Điểm</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Đơn vị</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Trạng thái</th>
+                  <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider text-right w-[90px] min-w-[90px]">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -422,13 +426,13 @@ const AdminHoatDong = () => {
                   const pct = hd.soLuongMAX > 0 ? Math.round((hd.soLuongDaDangKy / hd.soLuongMAX) * 100) : 0;
                   return (
                     <tr key={hd.idHD} className="hover:bg-[#f8faff] transition-colors group">
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-3">
                         <p className="font-semibold text-gray-900 group-hover:text-[#004581] transition-colors">{hd.tenHD}</p>
                         {hd.moTa && <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{hd.moTa}</p>}
                       </td>
-                      <td className="px-5 py-4 text-gray-500 text-xs whitespace-nowrap">{fmtDate(hd.ngayToChuc)}</td>
-                      <td className="px-5 py-4 text-gray-500 text-xs max-w-[140px] truncate">{hd.diaDiem || '—'}</td>
-                      <td className="px-5 py-4 text-center">
+                      <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(hd.ngayToChuc)}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs max-w-[140px] truncate">{hd.diaDiem || '—'}</td>
+                      <td className="px-4 py-3 text-center">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-xs font-bold text-gray-700">{hd.soLuongDaDangKy}/{hd.soLuongMAX}</span>
                           <div className="w-16 bg-gray-100 rounded-full h-1">
@@ -436,32 +440,42 @@ const AdminHoatDong = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-center">
+                      <td className="px-4 py-3 text-center">
                         <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#d4e3ff] text-[#004581] text-xs font-bold">{hd.diemHoatDong || 0}</span>
                       </td>
-                      <td className="px-5 py-4 text-gray-500 text-xs">{hd.tenKhoa || hd.donViToChuc || '—'}</td>
-                      <td className="px-5 py-4"><Badge tt={hd.trangThaiHD} /></td>
-                      <td className="px-5 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                      <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap max-w-[130px] truncate" title={hd.tenKhoa || hd.donViToChuc}>{hd.tenKhoa || hd.donViToChuc || '—'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap"><Badge tt={hd.trangThaiHD} /></td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap w-[90px] min-w-[90px]">
+                        <div className="flex items-center justify-end gap-1.5 flex-nowrap w-[90px] min-w-[90px]">
                           {hd.trangThaiHD === 'Chờ duyệt' && (<>
-                            <button onClick={() => duyet(hd)} className="px-2.5 py-1 bg-green-500 text-white rounded-lg text-xs font-semibold hover:bg-green-600">Duyệt</button>
-                            <button onClick={() => setTC(hd)} className="px-2.5 py-1 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600">Từ chối</button>
+                            <button onClick={() => duyet(hd)} title="Duyệt hoạt động" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all active:scale-95 flex-shrink-0">
+                              <span className="material-symbols-outlined text-base font-semibold">check</span>
+                            </button>
+                            <button onClick={() => setTC(hd)} title="Từ chối hoạt động" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all active:scale-95 flex-shrink-0">
+                              <span className="material-symbols-outlined text-base font-semibold">close</span>
+                            </button>
                           </>)}
                           {hd.trangThaiHD === 'Sắp diễn ra' && (
-                            <button onClick={() => doiTT(hd, 'Đang mở')} className="px-2.5 py-1 border border-green-500 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-50">Mở ĐK</button>
+                            <button onClick={() => doiTT(hd, 'Đang mở')} title="Mở đăng ký" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all active:scale-95 flex-shrink-0">
+                              <span className="material-symbols-outlined text-base font-semibold">lock_open</span>
+                            </button>
                           )}
                           {hd.trangThaiHD === 'Đang mở' && (
-                            <button onClick={() => doiTT(hd, 'Đang diễn ra')} className="px-2.5 py-1 border border-purple-400 text-purple-600 rounded-lg text-xs font-semibold hover:bg-purple-50">Bắt đầu</button>
+                            <button onClick={() => doiTT(hd, 'Đang diễn ra')} title="Bắt đầu hoạt động" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition-all active:scale-95 flex-shrink-0">
+                              <span className="material-symbols-outlined text-base font-semibold">play_arrow</span>
+                            </button>
                           )}
                           {hd.trangThaiHD === 'Đang diễn ra' && (<>
-                            <button onClick={() => setMcView(hd)} className="px-2.5 py-1 border border-[#004581] text-[#004581] rounded-lg text-xs font-semibold hover:bg-blue-50 flex items-center gap-1">
-                              <span className="material-symbols-outlined text-xs">fact_check</span>Minh chứng
+                            <button onClick={() => setMcView(hd)} title="Xem/Duyệt minh chứng" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#004581] border border-blue-200 transition-all active:scale-95 flex-shrink-0">
+                              <span className="material-symbols-outlined text-base font-semibold">fact_check</span>
                             </button>
-                            <button onClick={() => doiTT(hd, 'Đã kết thúc')} className="px-2.5 py-1 border border-gray-300 text-gray-500 rounded-lg text-xs font-semibold hover:bg-gray-50">Kết thúc</button>
+                            <button onClick={() => doiTT(hd, 'Đã kết thúc')} title="Kết thúc hoạt động" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 transition-all active:scale-95 flex-shrink-0">
+                              <span className="material-symbols-outlined text-base font-semibold">stop</span>
+                            </button>
                           </>)}
                           {hd.trangThaiHD === 'Đã kết thúc' && (
-                            <button onClick={() => setMcView(hd)} className="px-2.5 py-1 border border-[#004581] text-[#004581] rounded-lg text-xs font-semibold hover:bg-blue-50 flex items-center gap-1">
-                              <span className="material-symbols-outlined text-xs">fact_check</span>Xem MC
+                            <button onClick={() => setMcView(hd)} title="Xem minh chứng" className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#004581] border border-blue-200 transition-all active:scale-95 flex-shrink-0">
+                              <span className="material-symbols-outlined text-base font-semibold">fact_check</span>
                             </button>
                           )}
                         </div>
