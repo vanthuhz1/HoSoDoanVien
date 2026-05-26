@@ -1,0 +1,24 @@
+# Node modules
+sourcecode/backend/node_modules/
+sourcecode/frontend/node_modules/
+sourcecode/frontend/dist/
+
+# Environment variables
+sourcecode/backend/.env
+
+# Uploads
+sourcecode/backend/uploads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
