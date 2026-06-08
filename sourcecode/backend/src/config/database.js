@@ -11,6 +11,7 @@ const config = {
   connectionLimit: 10,
   queueLimit: 0,
   charset: 'utf8mb4',
+  ssl: process.env.DB_HOST && process.env.DB_HOST !== 'localhost' ? { rejectUnauthorized: false } : undefined
 };
 
 let pool = null;
