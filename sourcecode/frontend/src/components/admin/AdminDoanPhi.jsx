@@ -34,18 +34,39 @@ const Badge = ({ tt }) => (
 
 // ── MODAL TẠO MỨC PHÍ ──
 const TaoMucPhiModal = ({ danhMuc, onClose, onSaved }) => {
-  const [form, setForm] = useState({ namHoc: '', soTien: '' });
+  const [form, setForm] = useState({ namHoc: '', soTien: '48000' });
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const handleNamHocChange = (e) => {
+    const rawVal = e.target.value;
+    // Chỉ cho phép nhập số và dấu gạch ngang
+    const cleanVal = rawVal.replace(/[^0-9-]/g, '');
+    if (cleanVal.length <= 9) {
+      setForm(p => ({ ...p, namHoc: cleanVal }));
+    }
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true); setErr('');
     
     const amount = Number(form.soTien);
-    if (!form.namHoc.trim()) {
-      setErr('Vui lòng nhập năm học');
+    
+    // Kiểm tra định dạng YYYY-YYYY
+    const match = form.namHoc.match(/^(\d{4})-(\d{4})$/);
+    if (!match) {
+      setErr('Năm học phải có định dạng YYYY-YYYY (ví dụ: 2025-2026, chỉ gồm số và một dấu gạch ngang)');
       setSaving(false); return;
     }
+
+    const year1 = parseInt(match[1], 10);
+    const year2 = parseInt(match[2], 10);
+    if (year1 >= year2) {
+      setErr('Năm bắt đầu phải nhỏ hơn năm kết thúc (ví dụ: 2025 phải nhỏ hơn 2026)');
+      setSaving(false); return;
+    }
+
     if (amount <= 10000) {
       setErr('Số tiền phải lớn hơn 10.000 VNĐ');
       setSaving(false); return;
@@ -87,7 +108,7 @@ const TaoMucPhiModal = ({ danhMuc, onClose, onSaved }) => {
           <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Năm học (vd: 2025-2026)</label>
-              <input value={form.namHoc} onChange={e => setForm(p => ({...p, namHoc: e.target.value}))} placeholder="2025-2026"
+              <input value={form.namHoc} onChange={handleNamHocChange} placeholder="2025-2026"
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#004581] focus:ring-2 focus:ring-[#004581]/10 bg-gray-50 focus:bg-white transition-all text-gray-800 font-semibold" />
             </div>
             <div>
@@ -413,7 +434,7 @@ const ChiDoanView = ({ mucPhi, onBack }) => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {dv.trangThai !== 'Đã nộp' && mucPhi.trangThai === 'Đang mở thu' && (
+                          {dv.trangThai !== 'Đã nộp' && (mucPhi.trangThai === 'Đang mở thu' || mucPhi.trangThai === 'Đã đóng lại') && (
                             <button onClick={() => setDuyetModal(dv)}
                               className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all">
                               <span className="material-symbols-outlined text-base fill">how_to_reg</span>Duyệt thu
