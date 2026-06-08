@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { useToast } from '../common/Toast';
 
-const API = 'http://localhost:5000/api/thong-bao';
+const API = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/thong-bao';
 const H = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const fmtDate = d => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
 

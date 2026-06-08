@@ -9,7 +9,7 @@ import AdminDoanPhi   from '../components/admin/AdminDoanPhi';
 import AdminHoatDong  from '../components/admin/AdminHoatDong';
 import AdminThongBao  from '../components/admin/AdminThongBao';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const NAV_ITEMS = [
   { key: 'dashboard',  icon: 'dashboard',   label: 'Tổng quan' },

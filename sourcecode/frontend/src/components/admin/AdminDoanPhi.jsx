@@ -5,7 +5,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import Loading from '../common/Loading';
 
-const API = 'http://localhost:5000/api/doan-phi';
+const API = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/doan-phi';
 const H = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const fmt = (n) => n?.toLocaleString('vi-VN') + 'đ';
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';

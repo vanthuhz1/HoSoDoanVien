@@ -5,7 +5,7 @@ const formatDateForInput = (dateString) => {
   if (!dateString) return '';
   return dateString.split('T')[0]; // Biến "2000-04-27T17:00..." thành "2000-04-27" sạch sẽ
 };
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
 const BADGE = {

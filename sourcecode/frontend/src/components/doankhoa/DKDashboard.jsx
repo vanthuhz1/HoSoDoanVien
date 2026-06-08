@@ -7,7 +7,7 @@ import {
   BarChart as HBarChart,
 } from 'recharts';
 
-const API = 'http://localhost:5000/api/doan-khoa';
+const API = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/doan-khoa';
 const H   = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
 /* ── Tooltips ── */
