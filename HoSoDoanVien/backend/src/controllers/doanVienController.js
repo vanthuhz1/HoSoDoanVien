@@ -147,14 +147,80 @@ const uploadAvatar = async (req, res) => {
 // POST /api/doan-vien – Thêm mới Đoàn viên + Tự động tạo tài khoản & Sổ đoàn (Đã chuẩn hóa cột)
 const createDoanVien = async (req, res) => {
   try {
-    const data = req.body;
+    const data = req.body; 
+
+    // --- 1. KIỂM TRA DỮ LIỆU BẮT BUỘC (Tránh lỗi 500 do thiếu dữ liệu) ---
+    // Sửa lại đúng tên biến: maDV và hoTen
+    if (!data.maDV || String(data.maDV).trim() === "" || !data.hoTen || String(data.hoTen).trim() === "") {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Lỗi: Mã đoàn viên và Họ tên không được để trống!' 
+        });
+    }
+
+    // --- 2. KIỂM TRA LOGIC NGÀY THÁNG ---
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+// Kiểm tra Ngày sinh (nếu có nhập)
+if (data.ngaySinh && String(data.ngaySinh).trim() !== "") {
+    const birthDate = new Date(data.ngaySinh);
+    if (!isNaN(birthDate.getTime()) && birthDate >= today) {
+        return res.status(400).json({ success: false, message: 'Lỗi: Ngày sinh phải là một ngày trong quá khứ!' });
+    }
+}
+
+// Kiểm tra Ngày vào Đoàn (nếu có nhập)
+if (data.ngayVaoDoan && String(data.ngayVaoDoan).trim() !== "") {
+    const joinDate = new Date(data.ngayVaoDoan);
+    
+    // Kiểm tra Ngày vào Đoàn không được ở tương lai
+    if (!isNaN(joinDate.getTime()) && joinDate > today) {
+        return res.status(400).json({ success: false, message: 'Lỗi: Ngày vào Đoàn không thể ở tương lai!' });
+    }
+
+    // Chỉ tính tuổi nếu có đủ Ngày sinh và Ngày vào Đoàn
+    if (data.ngaySinh && String(data.ngaySinh).trim() !== "") {
+        const birthDate = new Date(data.ngaySinh);
+        
+        if (!isNaN(birthDate.getTime()) && !isNaN(joinDate.getTime())) {
+            // Kiểm tra Ngày vào Đoàn phải sau Ngày sinh
+            if (joinDate < birthDate) {
+                return res.status(400).json({ success: false, message: 'Lỗi: Ngày vào Đoàn không thể diễn ra trước Ngày sinh!' });
+            }
+
+            // TÍNH TUỔI CHÍNH XÁC ĐẾN TỪNG NGÀY
+            let exactAge = joinDate.getFullYear() - birthDate.getFullYear();
+            const monthDiff = joinDate.getMonth() - birthDate.getMonth();
+            const dayDiff = joinDate.getDate() - birthDate.getDate();
+
+            // Nếu chưa đến tháng sinh, hoặc đã đến tháng sinh nhưng chưa đến ngày sinh thì chưa đủ tuổi
+            if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                exactAge--;
+            }
+
+            if (exactAge < 15) {
+                return res.status(400).json({ success: false, message: `Lỗi: Đoàn viên chưa đủ 15 tuổi tại thời điểm vào Đoàn (Tuổi thực: ${exactAge})!` });
+            }
+        }
+    }
+}
+// 3. CÁC LỆNH INSERT INTO DATABASE PHÍA DƯỚI GIỮ NGUYÊN...
     const pool = await getConnection();
     
-    // 1. Kiểm tra xem mã đoàn viên đã tồn tại chưa
-    const [exist] = await pool.query('SELECT maDV FROM DoanVien WHERE maDV = ?', [data.maDV]);
-    if (exist.length > 0) {
-      return res.status(400).json({ success: false, message: 'Mã đoàn viên này đã tồn tại trong hệ thống' });
+   
+    
+    // THÊM DÒNG NÀY ĐỂ DEBUG:
+    console.log("Dữ liệu nhận được từ Postman: ", data);
+
+    // --- 1. KIỂM TRA DỮ LIỆU BẮT BUỘC ---
+    if (!data.maDV || String(data.maDV).trim() === "" || !data.hoTen || String(data.hoTen).trim() === "") {
+        return res.status(400).json({
+          success: false, 
+            message: 'Lỗi: Mã đoàn viên và Họ tên không được để trống!' 
+        });
     }
+        
 
     // XỬ LÝ AN TOÀN: Ép chuỗi rỗng về null
     const ngaySinh = data.ngaySinh && data.ngaySinh.trim() !== '' ? data.ngaySinh : null;
@@ -199,77 +265,83 @@ const createDoanVien = async (req, res) => {
 // PUT /api/doan-vien/:id – Cập nhật thông tin Đoàn viên (Bản chuẩn hóa tránh lỗi 500)
 const updateDoanVien = async (req, res) => {
   try {
-    const { id } = req.params; // id này chính là mã đoàn viên (maDV) gửi từ URL
+    const { id } = req.params; 
     const data = req.body;
     const pool = await getConnection();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    // 1. Chuẩn hóa dữ liệu đầu vào: Nếu để trống hoặc không chọn thì ép về null để MySQL không bắt lỗi
-    const ngaySinh = data.ngaySinh && data.ngaySinh.trim() !== '' ? data.ngaySinh : null;
-    const ngayVaoDoan = data.ngayVaoDoan && data.ngayVaoDoan.trim() !== '' ? data.ngayVaoDoan : null;
+    // --- 1. KIỂM TRA LOGIC NGÀY THÁNG (Bổ sung đầy đủ) ---
     
-    // Nếu maChiDoan trống hoặc không hợp lệ, ép về null để không gãy khóa ngoại
-    const maChiDoan = data.maChiDoan && data.maChiDoan.trim() !== '' && data.maChiDoan !== '-- Chọn chi đoàn --' ? data.maChiDoan : null;
-
-    // 2. Ép chuỗi trạng thái sinh hoạt khớp chuẩn ENUM trong database của bạn
-    let trangThaiSHClean = 'Đang sinh hoạt';
-    if (data.trangThaiSH) {
-      const ts = data.trangThaiSH.toString().trim().toLowerCase();
-      if (ts.includes('rút') || ts.includes('rut')) {
-        trangThaiSHClean = 'Đã rút hồ sơ';
-      } else if (ts.includes('nghiệp') || ts.includes('nghiep')) {
-        trangThaiSHClean = 'Đã tốt nghiệp';
-      }
+    // Kiểm tra Ngày sinh (Nếu có nhập)
+    if (data.ngaySinh && String(data.ngaySinh).trim() !== "") {
+        const birthDate = new Date(data.ngaySinh);
+        if (!isNaN(birthDate.getTime()) && birthDate >= today) {
+            return res.status(400).json({ success: false, message: 'Lỗi: Ngày sinh phải là ngày trong quá khứ!' });
+        }
     }
 
-    // 3. Thực thi lệnh UPDATE với cấu trúc mảng tham số khớp chuẩn 100% với số dấu chấm hỏi (?)
+    // Kiểm tra Ngày vào Đoàn (Nếu có nhập)
+    if (data.ngayVaoDoan && String(data.ngayVaoDoan).trim() !== "") {
+        const joinDate = new Date(data.ngayVaoDoan);
+        if (!isNaN(joinDate.getTime()) && joinDate > today) {
+            return res.status(400).json({ success: false, message: 'Lỗi: Ngày vào Đoàn không thể ở tương lai!' });
+        }
+        
+        // Nếu có cả ngày sinh và ngày vào đoàn thì mới check tuổi
+        if (data.ngaySinh && String(data.ngaySinh).trim() !== "") {
+            const birthDate = new Date(data.ngaySinh);
+            if (!isNaN(birthDate.getTime())) {
+                if (joinDate < birthDate) {
+                    return res.status(400).json({ success: false, message: 'Lỗi: Ngày vào Đoàn không thể trước Ngày sinh!' });
+                }
+
+                let exactAge = joinDate.getFullYear() - birthDate.getFullYear();
+                const monthDiff = joinDate.getMonth() - birthDate.getMonth();
+                const dayDiff = joinDate.getDate() - birthDate.getDate();
+                if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) exactAge--;
+
+                if (exactAge < 15) {
+                    return res.status(400).json({ success: false, message: `Lỗi: Đoàn viên chưa đủ 15 tuổi (Tuổi thực: ${exactAge})!` });
+                }
+            }
+        }
+    }
+
+
+    // 2. CHUẨN HÓA DỮ LIỆU
+    const ngaySinh = (data.ngaySinh && data.ngaySinh.trim() !== '') ? data.ngaySinh : null;
+    const ngayVaoDoan = (data.ngayVaoDoan && data.ngayVaoDoan.trim() !== '') ? data.ngayVaoDoan : null;
+    const maChiDoan = (data.maChiDoan && data.maChiDoan.trim() !== '' && data.maChiDoan !== '-- Chọn chi đoàn --') ? data.maChiDoan : null;
+    
+    const ts = data.trangThaiSH ? data.trangThaiSH.toString().trim().toLowerCase() : '';
+    let trangThaiSHClean = 'Đang sinh hoạt';
+    if (ts.includes('rút')) trangThaiSHClean = 'Đã rút hồ sơ';
+    else if (ts.includes('nghiệp')) trangThaiSHClean = 'Đã tốt nghiệp';
+
+    // 3. CẬP NHẬT DATABASE
     const [result] = await pool.query(`
       UPDATE DoanVien SET 
-        hoTen = ?, 
-        ngaySinh = ?, 
-        gioiTinh = ?, 
-        danToc = ?, 
-        tonGiao = ?, 
-        cccd = ?, 
-        queQuan = ?, 
-        diaChiThuongTru = ?, 
-        SDT = ?, 
-        chucVu = ?, 
-        maChiDoan = ?, 
-        ngayVaoDoan = ?, 
-        noiVaoDoan = ?, 
-        trangThaiSH = ?
+        hoTen = ?, ngaySinh = ?, gioiTinh = ?, danToc = ?, tonGiao = ?, 
+        cccd = ?, queQuan = ?, diaChiThuongTru = ?, SDT = ?, chucVu = ?, 
+        maChiDoan = ?, ngayVaoDoan = ?, noiVaoDoan = ?, trangThaiSH = ?
       WHERE maDV = ?
     `, [
-      data.hoTen, 
-      ngaySinh, 
-      data.gioiTinh, 
-      data.danToc || 'Kinh', 
-      data.tonGiao || 'Không', 
-      data.cccd && data.cccd.trim() !== '' ? data.cccd : null, 
-      data.queQuan || null, 
-      data.diaChiThuongTru || null, 
-      data.SDT && data.SDT.trim() !== '' ? data.SDT : null, 
-      data.chucVu || 'Đoàn viên', 
-      maChiDoan, 
-      ngayVaoDoan, 
-      data.noiVaoDoan || null, 
-      trangThaiSHClean, 
-      id // Bản ghi cần cập nhật (maDV) nằm ở cuối mảng ứng với WHERE maDV = ?
+      data.hoTen, ngaySinh, data.gioiTinh, data.danToc || 'Kinh', data.tonGiao || 'Không', 
+      data.cccd || null, data.queQuan || null, data.diaChiThuongTru || null, data.SDT || null, 
+      data.chucVu || 'Đoàn viên', maChiDoan, ngayVaoDoan, data.noiVaoDoan || null, 
+      trangThaiSHClean, id
     ]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy đoàn viên để cập nhật' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đoàn viên để cập nhật!' });
     }
 
-    return res.json({ success: true, message: 'Cập nhật thông tin thành công' });
+    return res.json({ success: true, message: 'Cập nhật thông tin thành công!' });
+
   } catch (error) {
-    // In lỗi chi tiết ra màn hình terminal để dễ kiểm tra nếu database bị lệch tên cột
-    console.error('Lỗi SQL chi tiết tại Backend:', error.message);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Lỗi hệ thống ngầm khi cập nhật dữ liệu', 
-      error: error.message 
-    });
+    console.error('Lỗi Backend:', error);
+    return res.status(500).json({ success: false, message: 'Lỗi hệ thống!', error: error.message });
   }
 };
 module.exports = { 

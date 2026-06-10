@@ -55,6 +55,7 @@ CREATE TABLE DoanVien (
     trangThaiSH      ENUM('Đang sinh hoạt', 'Đã tốt nghiệp', 'Đã rút hồ sơ'),
     FOREIGN KEY (maChiDoan) REFERENCES ChiDoan(maChiDoan) ON DELETE SET NULL
 );
+
 -- 4. BẢNG SỔ ĐOÀN
 CREATE TABLE SoDoan (
     maSoDoan  VARCHAR(15)  PRIMARY KEY,
@@ -290,9 +291,7 @@ INSERT INTO DoanVien (maDV, hoTen, ngaySinh, gioiTinh, danToc, tonGiao, cccd, qu
 ('2311500048', 'Hoàng Minh Dung', '2004-11-07', 'Nữ', 'Kinh', 'Không', '048572498239', 'Bình Định', '33 Lý Thường Kiệt, Thanh Khê, Đà Nẵng', '0919604820', 'Đoàn viên', '22C1', '2018-06-19', 'THPT Hoàng Hoa Thám', 'Đang sinh hoạt'),
 ('2311500049', 'Đỗ Ngọc Bình', '2004-10-16', 'Nam', 'Kinh', 'Không', '048255377418', 'Quảng Nam', '79 Hùng Vương, Cẩm Lệ, Đà Nẵng', '0998948344', 'Đoàn viên', '23N2', '2018-04-21', 'THPT Thái Phiên', 'Đã tốt nghiệp'),
 ('2311500050', 'Trần Đức Cường', '2003-10-09', 'Nam', 'Kinh', 'Không', '048149625158', 'Đắk Lắk', '39 Trần Phú, Liên Chiểu, Đà Nẵng', '0989074723', 'Đoàn viên', '20D1', '2018-03-13', 'THPT Ông Ích Khiêm', 'Đã rút hồ sơ');
--- select* from DoanVien where maDV ='7092005'
--- select* from TaiKhoan
--- SELECT email, trangThai FROM TaiKhoan WHERE maDV = '7092005';
+
 
 -- 4. VAI TRÒ
 INSERT IGNORE INTO VaiTro (idVaiTro, tenVaiTro, moTa) VALUES

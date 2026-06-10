@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API = 'http://localhost:5000/api/doan-khoa';
+const API = 'http://localhost:5001/api/doan-khoa';
 const H   = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const fmtDate = d => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
 

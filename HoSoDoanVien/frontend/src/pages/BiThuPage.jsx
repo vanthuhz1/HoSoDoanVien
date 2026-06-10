@@ -5,7 +5,7 @@ import Footer from '../components/layout/Footer';
 import { authService } from '../services/authService';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5001/api';
 
 const BiThuPage = () => {
   const currentUser = authService.getCurrentUser();

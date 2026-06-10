@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-
+<th className="px-5 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Sổ Đoàn</th>
 const formatDateForInput = (dateString) => {
   if (!dateString) return '';
   return dateString.split('T')[0]; // Biến "2000-04-27T17:00..." thành "2000-04-27" sạch sẽ
@@ -62,14 +62,31 @@ const Modal = ({ dv, onClose, onSaved, chiDoans }) => {
 
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!form.maDV || !form.hoTen) { setError('Mã ĐV và Họ tên là bắt buộc'); return; }
+    
+    // Kiểm tra nhanh phía Frontend
+    if (!form.maDV || !form.hoTen) { 
+      setError('Mã ĐV và Họ tên là bắt buộc'); 
+      return; 
+    }
+
     setSaving(true);
+    setError(''); // Reset lỗi cũ trước khi gửi
+
     try {
-      if (isEdit) await axios.put(`${API_URL}/doan-vien/${form.maDV}`, form, { headers: getHeaders() });
-      else        await axios.post(`${API_URL}/doan-vien`, form, { headers: getHeaders() });
-      onSaved();
-    } catch(err) { setError(err.response?.data?.message || 'Có lỗi xảy ra'); }
-    finally { setSaving(false); }
+      if (isEdit) {
+        await axios.put(`${API_URL}/doan-vien/${form.maDV}`, form, { headers: getHeaders() });
+      } else {
+        await axios.post(`${API_URL}/doan-vien`, form, { headers: getHeaders() });
+      }
+      onSaved(); // Đóng modal và reload lại bảng nếu thành công
+    } catch(err) {
+      // 💡 ĐÂY LÀ ĐOẠN QUAN TRỌNG:
+      // Lấy message lỗi từ Backend (ví dụ: "Lỗi: Ngày vào Đoàn phải cách Ngày sinh ít nhất 15 năm...")
+      const errorMsg = err.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại';
+      setError(errorMsg); 
+    } finally {
+      setSaving(false);
+    }
   };
 
   const fp = { form, setForm };

@@ -68,7 +68,16 @@ const login = async (req, res) => {
         message: 'Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên'
       });
     }
-
+// Kiểm tra trạng thái sinh hoạt đoàn viên
+if (
+  user.trangThaiSH === 'Đã tốt nghiệp' ||
+  user.trangThaiSH === 'Đã rút hồ sơ'
+) {
+  return res.status(403).json({
+    success: false,
+    message: 'Đoàn viên đã tốt nghiệp hoặc đã rút hồ sơ, không được phép đăng nhập.'
+  });
+}
     // So sánh mật khẩu (bcrypt)
     const isPasswordValid = await bcrypt.compare(matKhau, user.matKhau);
     if (!isPasswordValid) {
