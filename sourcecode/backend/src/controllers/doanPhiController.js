@@ -441,10 +441,127 @@ const deleteDanhMuc = async (req, res) => {
   }
 };
 
+// GET /api/doan-phi/check-status/:idDoanPhi - Kiểm tra trạng thái thanh toán qua SePay
+const checkPaymentStatus = async (req, res) => {
+  try {
+    const { idDoanPhi } = req.params;
+
+    if (!idDoanPhi) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu ID đoàn phí'
+      });
+    }
+
+    const pool = await getConnection();
+
+    // 1. Kiểm tra trạng thái hiện tại trong database
+    const selectSql = `
+      SELECT dp.trangThai, dmp.soTien 
+      FROM DoanPhi dp
+      INNER JOIN DanhMucDoanPhi dmp ON dp._idMucDoanPhi = dmp._idMucDoanPhi
+      WHERE dp._idDoanPhi = ?
+    `;
+    const [rows] = await pool.query(selectSql, [idDoanPhi]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy thông tin đoàn phí'
+      });
+    }
+
+    const { trangThai, soTien } = rows[0];
+
+    // Nếu đã nộp rồi thì trả về thành công ngay lập tức
+    if (trangThai === 'Đã nộp') {
+      return res.status(200).json({
+        success: true,
+        status: 'Đã nộp',
+        message: 'Thanh toán thành công!'
+      });
+    }
+
+    const sepayKey = process.env.SEPAY_API_KEY;
+    if (!sepayKey) {
+      return res.status(500).json({
+        success: false,
+        message: 'Cấu hình hệ thống thiếu SEPAY_API_KEY'
+      });
+    }
+
+    // 2. Gọi API của SePay để quét giao dịch
+    // Tìm kiếm các giao dịch có nội dung chuyển khoản chứa "DP<idDoanPhi>"
+    const regex = new RegExp(`dp${idDoanPhi}(\\D|$)`, 'i');
+    const response = await fetch(`https://userapi.sepay.vn/v2/transactions?transfer_type=in&limit=20`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${sepayKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`SePay API returned status ${response.status}: ${errorText}`);
+    }
+
+    const result = await response.json();
+    const transactions = result.data || [];
+
+    // Tìm giao dịch khớp điều kiện:
+    // - Nội dung chứa từ khóa (không phân biệt chữ hoa/thường, khớp chính xác số ID)
+    // - Số tiền lớn hơn hoặc bằng số tiền của kỳ đoàn phí
+    const matchTx = transactions.find(tx => {
+      const content = tx.transaction_content || '';
+      const txAmount = parseFloat(tx.amount_in || tx.amount || 0);
+      return regex.test(content) && txAmount >= parseFloat(soTien);
+    });
+
+    if (matchTx) {
+      // 3. Cập nhật trạng thái trong database thành "Đã nộp"
+      const updateSql = `
+        UPDATE DoanPhi 
+        SET 
+          trangThai = 'Đã nộp',
+          phuongThucThanhToan = 'Chuyển khoản (MB Bank)',
+          maGiaoDich = ?,
+          ThoiGianThanhToan = NOW()
+        WHERE _idDoanPhi = ?
+      `;
+      // Sử dụng mã giao dịch từ SePay (hoặc transaction_id của SePay)
+      const transactionId = matchTx.id || matchTx.transaction_id || `SP${Date.now()}`;
+      await pool.query(updateSql, [transactionId, idDoanPhi]);
+
+      return res.status(200).json({
+        success: true,
+        status: 'Đã nộp',
+        message: 'Thanh toán thành công!'
+      });
+    }
+
+    // Nếu không tìm thấy giao dịch nào phù hợp
+    return res.status(200).json({
+      success: true,
+      status: 'Chưa nộp',
+      message: 'Chưa nhận được thanh toán'
+    });
+
+  } catch (error) {
+    console.error('Error checking payment status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi khi kiểm tra trạng thái thanh toán',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getMyFees,
   paymentFee,
   getInvoice,
+  checkPaymentStatus,
   getDanhMuc,
   createDanhMuc,
   kichHoatDanhMuc,

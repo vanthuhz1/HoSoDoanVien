@@ -20,5 +20,11 @@ export const doanPhiService = {
   getInvoice: async (id) => {
     const response = await axios.get(`${API_URL}/invoice/${id}`);
     return response.data;
+  },
+
+  // Kiểm tra trạng thái thanh toán qua SePay
+  checkPaymentStatus: async (idDoanPhi) => {
+    const response = await axios.get(`${API_URL}/check-status/${idDoanPhi}`);
+    return response.data;
   }
 };

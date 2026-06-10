@@ -15,6 +15,7 @@ const DoanPhiPage = () => {
   const [selectedFee, setSelectedFee] = useState(null);
   const [invoiceData, setInvoiceData] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [timeLeft, setTimeLeft] = useState(300); // 5 phút đếm ngược
   const invoiceRef = useRef();
   const toast = useToast();
 
@@ -23,6 +24,58 @@ const DoanPhiPage = () => {
   useEffect(() => {
     fetchFees();
   }, []);
+
+  // Thiết lập kiểm tra trạng thái thanh toán tự động (Auto-polling) mỗi 3 giây khi mở modal thanh toán
+  useEffect(() => {
+    let intervalId;
+    if (showPaymentModal && selectedFee) {
+      intervalId = setInterval(async () => {
+        try {
+          const res = await doanPhiService.checkPaymentStatus(selectedFee._idDoanPhi);
+          if (res.success && res.status === 'Đã nộp') {
+            clearInterval(intervalId);
+            toast.success('Thanh toán đoàn phí thành công!');
+            setShowPaymentModal(false);
+            
+            // Cập nhật lại danh sách đoàn phí ở trang chủ
+            await fetchFees();
+            
+            // Tự động mở hóa đơn đã thanh toán thành công
+            const invoiceRes = await doanPhiService.getInvoice(selectedFee._idDoanPhi);
+            setInvoiceData(invoiceRes.data);
+            setShowInvoiceModal(true);
+          }
+        } catch (error) {
+          console.error('Error auto-checking payment status:', error);
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [showPaymentModal, selectedFee]);
+
+  // Thiết lập đếm ngược 5 phút (300 giây) cho đợt chuyển khoản
+  useEffect(() => {
+    let timerId;
+    if (showPaymentModal && timeLeft > 0) {
+      timerId = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (showPaymentModal && timeLeft === 0) {
+      // Hết thời gian 5 phút, tự động thất bại
+      toast.error('Giao dịch hết hạn! Thanh toán thất bại.');
+      setShowPaymentModal(false);
+      fetchFees(); // Refresh danh sách đoàn phí
+    }
+
+    return () => {
+      if (timerId) clearInterval(timerId);
+    };
+  }, [showPaymentModal, timeLeft]);
 
   const fetchFees = async () => {
     try {
@@ -41,6 +94,7 @@ const DoanPhiPage = () => {
   const handlePayment = (fee) => {
     setSelectedFee(fee);
     setPaymentMethod('');
+    setTimeLeft(300); // 5 phút đếm ngược
     setShowPaymentModal(true);
   };
 
@@ -86,6 +140,12 @@ const DoanPhiPage = () => {
 
   const totalPaid   = useMemo(() => paidFees.reduce((s, f) => s + (parseFloat(f.soTien) || 0), 0), [paidFees]);
   const totalUnpaid = useMemo(() => unpaidFees.reduce((s, f) => s + (parseFloat(f.soTien) || 0), 0), [unpaidFees]);
+
+  const memoText = selectedFee ? `DP${selectedFee._idDoanPhi} ${currentUser?.maDV || ''} ${selectedFee.namHoc.replace('-', '')}` : '';
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+  const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  const timePercent = (timeLeft / 300) * 100;
 
   return (
     <div className="bg-[#f8fafc] text-gray-900 min-h-screen flex flex-col font-sans">
@@ -238,64 +298,166 @@ const DoanPhiPage = () => {
       {/* =================== PAYMENT MODAL =================== */}
       {showPaymentModal && selectedFee && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowPaymentModal(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-[#004581] to-[#0066cc] text-white px-8 py-7">
-              <h3 className="text-2xl font-extrabold flex items-center gap-2">
-                <span className="material-symbols-outlined text-3xl">payment</span>
-                Thanh Toán Đoàn Phí
-              </h3>
-              <p className="text-blue-100 text-sm mt-1">Kỳ: {selectedFee.namHoc}</p>
-            </div>
-
-            <div className="p-8">
-              <div className="text-center mb-8 p-5 bg-blue-50 rounded-2xl border border-blue-100">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Số tiền cần nộp</p>
-                <p className="text-4xl font-black text-[#004581]">{formatCurrency(selectedFee.soTien)}</p>
-              </div>
-
-              <div className="mb-8">
-                <p className="text-xs font-extrabold text-gray-500 uppercase tracking-widest mb-3">
-                  Chọn phương thức <span className="text-red-500">*</span>
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { key: 'Chuyển khoản', icon: 'account_balance', desc: 'Ngân hàng' },
-                    { key: 'Ví điện tử', icon: 'account_balance_wallet', desc: 'Momo, ZaloPay...' },
-                  ].map(m => (
-                    <button
-                      key={m.key}
-                      onClick={() => setPaymentMethod(m.key)}
-                      className={`flex flex-col items-center gap-2 py-5 px-4 rounded-2xl border-2 font-bold transition-all ${
-                        paymentMethod === m.key
-                          ? 'border-[#004581] bg-blue-50 text-[#004581] shadow-md'
-                          : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-3xl">{m.icon}</span>
-                      <span className="text-sm">{m.key}</span>
-                      <span className="text-xs font-normal text-gray-400">{m.desc}</span>
-                    </button>
-                  ))}
+          <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full overflow-hidden border border-gray-100" onClick={e => e.stopPropagation()}>
+            
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#004581] to-[#0066cc] text-white px-8 py-5 relative">
+              <div className="flex justify-between items-center pr-8">
+                <div>
+                  <h3 className="text-xl font-black flex items-center gap-2">
+                    <span className="material-symbols-outlined text-2xl">qr_code_2</span>
+                    Thanh Toán Trực Tuyến
+                  </h3>
+                  <p className="text-blue-100 text-xs mt-0.5">Quét mã QR để chuyển khoản đoàn phí nhanh</p>
                 </div>
-                <p className="text-xs text-gray-400 mt-4 text-center">
-                  Chức năng thanh toán online đang được phát triển. Vui lòng liên hệ Ban Chấp hành để được hướng dẫn.
-                </p>
+                {/* Countdown Badge */}
+                <div className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-black border transition-all ${
+                  timeLeft <= 60 
+                    ? 'bg-red-500 text-white border-red-400 animate-pulse' 
+                    : 'bg-white/10 text-white border-white/20'
+                }`}>
+                  <span className="material-symbols-outlined text-[18px]">timer</span>
+                  <span>{formattedTime}</span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPaymentModal(false)}
+                className="absolute top-5 right-6 text-white/80 hover:text-white transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Progress bar thời gian giảm dần */}
+            <div className="w-full bg-gray-100 h-1.5">
+              <div 
+                className={`h-full transition-all duration-1000 ${timeLeft <= 60 ? 'bg-red-500' : 'bg-[#0066cc]'}`} 
+                style={{ width: `${timePercent}%` }}
+              ></div>
+            </div>
+
+            {/* Body */}
+            <div className="p-8">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                
+                {/* Cột trái: QR Code */}
+                <div className="md:col-span-5 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 pb-6 md:pb-0 md:pr-8">
+                  <div className="relative p-4 bg-white rounded-2xl border-2 border-dashed border-blue-400/80 shadow-md">
+                    <img 
+                      src={`https://img.vietqr.io/image/MB-0931992872-compact2.png?amount=${selectedFee.soTien}&addInfo=${encodeURIComponent(memoText)}`} 
+                      alt="VietQR MB Bank" 
+                      className="w-full max-w-[200px] aspect-square object-contain mx-auto"
+                    />
+                  </div>
+                  <span className="mt-4 px-3.5 py-1.5 bg-blue-50 text-blue-700 text-[10px] font-black rounded-full uppercase tracking-wider text-center border border-blue-100 shadow-sm">
+                    Mở App Ngân Hàng Quét QR
+                  </span>
+                </div>
+
+                {/* Cột phải: Thông tin */}
+                <div className="md:col-span-7 flex flex-col justify-between space-y-4">
+                  
+                  {/* Người nộp */}
+                  <div className="bg-gray-50/80 rounded-2xl p-4 border border-gray-100/80 text-xs space-y-2.5">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400 font-bold uppercase">Người nộp:</span>
+                      <span className="font-extrabold text-gray-800">{currentUser?.hoTen || currentUser?.tenNguoiDung}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400 font-bold uppercase">Mã đoàn viên (MSSV):</span>
+                      <span className="font-extrabold text-gray-800">{currentUser?.maDV || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400 font-bold uppercase">Kỳ đoàn phí:</span>
+                      <span className="font-extrabold text-gray-800">Năm học {selectedFee.namHoc}</span>
+                    </div>
+                  </div>
+
+                  {/* Chi tiết chuyển khoản thủ công */}
+                  <div className="space-y-3 bg-gray-50/50 p-5 rounded-2xl border border-gray-100 text-xs">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                      <span className="text-gray-400 font-bold uppercase">Ngân hàng</span>
+                      <span className="font-bold text-gray-800">MB Bank (Ngân hàng Quân Đội)</span>
+                    </div>
+
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                      <span className="text-gray-400 font-bold uppercase">Số tài khoản</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-gray-800 text-sm">0931992872</span>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText('0931992872');
+                            toast.success('Đã sao chép số tài khoản');
+                          }}
+                          className="text-blue-600 hover:text-blue-800 flex items-center p-0.5 hover:bg-blue-50 rounded"
+                          title="Sao chép số tài khoản"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">content_copy</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                      <span className="text-gray-400 font-bold uppercase">Số tiền</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-gray-800 text-sm">{formatCurrency(selectedFee.soTien)}</span>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedFee.soTien.toString());
+                            toast.success('Đã sao chép số tiền');
+                          }}
+                          className="text-blue-600 hover:text-blue-800 flex items-center p-0.5 hover:bg-blue-50 rounded"
+                          title="Sao chép số tiền"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">content_copy</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-yellow-50/80 p-3 rounded-xl border border-yellow-200">
+                      <span className="text-yellow-800 font-bold uppercase">Nội dung chuyển khoản (Memo)</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-red-600 text-[13px]">{memoText}</span>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(memoText);
+                            toast.success('Đã sao chép nội dung chuyển khoản');
+                          }}
+                          className="text-red-600 hover:text-red-800 flex items-center p-0.5 hover:bg-red-50 rounded"
+                          title="Sao chép nội dung"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">content_copy</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Trạng thái và Hành động */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-center gap-2 py-3 px-4 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-2xl border border-emerald-100">
+                      <svg className="animate-spin h-4 w-4 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Hệ thống đang quét giao dịch tự động mỗi 3 giây...</span>
+                    </div>
+
+                    <button 
+                      onClick={() => setShowPaymentModal(false)} 
+                      className="w-full py-3.5 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors text-sm text-center"
+                    >
+                      Hủy giao dịch & Trở lại
+                    </button>
+                  </div>
+
+                </div>
               </div>
 
-              <div className="flex gap-3">
-                <button onClick={() => setShowPaymentModal(false)} className="flex-1 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
-                  Hủy
-                </button>
-                <button
-                  onClick={handleSubmitPayment}
-                  disabled={!paymentMethod}
-                  className="flex-1 py-3 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-[20px]">check_circle</span>
-                  Xác nhận
-                </button>
-              </div>
+              <p className="text-[10px] text-gray-400 mt-6 leading-relaxed text-center border-t border-gray-50 pt-4">
+                * Vui lòng chuyển khoản đúng số tài khoản, số tiền và <strong>nội dung chuyển khoản chính xác</strong> như hướng dẫn ở trên để hệ thống tự động ghi nhận thanh toán.
+              </p>
             </div>
+
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { 
-  getMyFees, paymentFee, getInvoice,
+  getMyFees, paymentFee, getInvoice, checkPaymentStatus,
   getDanhMuc, createDanhMuc, kichHoatDanhMuc, dongDanhMuc,
   getThongKeDoanPhi, getTienDoDoanPhi, getChiTietChiDoan,
   deleteDanhMuc, duyetThuCong, getBaoCaoDoanPhi
@@ -12,6 +12,9 @@ router.get('/my-fees', getMyFees);
 
 // POST /api/doan-phi/payment - Thanh toán đoàn phí
 router.post('/payment', paymentFee);
+
+// GET /api/doan-phi/check-status/:idDoanPhi - Kiểm tra trạng thái thanh toán qua SePay
+router.get('/check-status/:idDoanPhi', checkPaymentStatus);
 
 // GET /api/doan-phi/invoice/:id - Lấy thông tin hóa đơn
 router.get('/invoice/:id', getInvoice);
