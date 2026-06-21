@@ -104,7 +104,11 @@ const getHoatDong = async (req, res) => {
        LEFT JOIN Khoa k ON hd.maKhoa=k.maKhoa
        WHERE hd.maKhoa=? ORDER BY hd.ngayToChuc DESC`, [maKhoa]
     );
-    return res.json({ success: true, data: rows });
+    const data = rows.map(r => ({
+      ...r,
+      donViToChuc: r.tenKhoa ? `Đoàn khoa ${r.tenKhoa}` : (r.donViToChuc || 'Chưa xác định')
+    }));
+    return res.json({ success: true, data });
   } catch(err) { return res.status(500).json({ success: false, message: err.message }); }
 };
 

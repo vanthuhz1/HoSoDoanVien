@@ -59,7 +59,7 @@ const getHomeActivities = async (req, res) => {
       diaDiem: r.diaDiem,
       soLuongMAX: r.soLuongMAX,
       soLuongDaDangKy: parseInt(r.soLuongDaDangKy) || 0,
-      donViToChuc: r.tenKhoa || r.donViToChuc || 'Chưa xác định',
+      donViToChuc: r.tenKhoa ? `Đoàn khoa ${r.tenKhoa}` : (r.donViToChuc || 'Chưa xác định'),
       trangThaiHD: r.trangThaiHD,
       diemHoatDong: r.diemHoatDong,
       luuY: r.luuY,
@@ -106,7 +106,11 @@ const getAllActivities = async (req, res) => {
     sql += ` GROUP BY hd.idHD ORDER BY hd.ngayToChuc DESC`;
 
     const [rows] = await pool.query(sql, params);
-    const data = rows.map(r => ({ ...r, soLuongDaDangKy: parseInt(r.soLuongDaDangKy) || 0 }));
+    const data = rows.map(r => ({
+      ...r,
+      soLuongDaDangKy: parseInt(r.soLuongDaDangKy) || 0,
+      donViToChuc: r.tenKhoa ? `Đoàn khoa ${r.tenKhoa}` : (r.donViToChuc || 'Chưa xác định')
+    }));
 
     return res.json({ success: true, data, total: data.length });
 
@@ -257,7 +261,7 @@ const getActivityById = async (req, res) => {
       diaDiem: activity.diaDiem,
       soLuongMAX: activity.soLuongMAX,
       soLuongDaDangKy: parseInt(activity.soLuongDaDangKy) || 0,
-      donViToChuc: activity.tenKhoa || activity.donViToChuc || 'Chưa xác định',
+      donViToChuc: activity.tenKhoa ? `Đoàn khoa ${activity.tenKhoa}` : (activity.donViToChuc || 'Chưa xác định'),
       trangThaiHD: activity.trangThaiHD,
       diemHoatDong: activity.diemHoatDong,
       luuY: activity.luuY,
