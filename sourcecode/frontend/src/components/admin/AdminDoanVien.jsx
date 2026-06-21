@@ -10,27 +10,30 @@ const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token
 
 const BADGE = {
   'Đang sinh hoạt': 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  'Đã rút hồ sơ':  'bg-rose-50 text-rose-600 ring-1 ring-rose-200',
+  'Đã rút hồ sơ': 'bg-rose-50 text-rose-600 ring-1 ring-rose-200',
+  'Đã tốt nghiệp': 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
 };
+
 const DOT = {
   'Đang sinh hoạt': 'bg-emerald-500',
-  'Đã rút hồ sơ':  'bg-rose-500',
+  'Đã rút hồ sơ': 'bg-rose-500',
+  'Đã tốt nghiệp': 'bg-blue-500',
 };
 const AVATAR_COLORS = [
-  'from-violet-500 to-purple-600','from-blue-500 to-cyan-500',
-  'from-emerald-500 to-teal-500','from-orange-400 to-rose-500',
-  'from-pink-500 to-fuchsia-600','from-amber-400 to-orange-500',
+  'from-violet-500 to-purple-600', 'from-blue-500 to-cyan-500',
+  'from-emerald-500 to-teal-500', 'from-orange-400 to-rose-500',
+  'from-pink-500 to-fuchsia-600', 'from-amber-400 to-orange-500',
 ];
-const avatarColor = (str='') => AVATAR_COLORS[str.charCodeAt(0) % AVATAR_COLORS.length];
+const avatarColor = (str = '') => AVATAR_COLORS[str.charCodeAt(0) % AVATAR_COLORS.length];
 
 /* ── INPUT HELPER ── */
-const F = ({ label, name, type='text', required, form, setForm, children }) => (
+const F = ({ label, name, type = 'text', required, form, setForm, children }) => (
   <div>
     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
       {label}{required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
     {children || (
-      <input type={type} value={form[name]||''} onChange={e=>setForm(p=>({...p,[name]:e.target.value}))}
+      <input type={type} value={form[name] || ''} onChange={e => setForm(p => ({ ...p, [name]: e.target.value }))}
         className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 focus:outline-none focus:border-[#004581] focus:ring-2 focus:ring-[#004581]/10 bg-gray-50 focus:bg-white transition-all" />
     )}
   </div>
@@ -39,23 +42,23 @@ const F = ({ label, name, type='text', required, form, setForm, children }) => (
 /* ── MODAL ── */
 const Modal = ({ dv, onClose, onSaved, chiDoans }) => {
   const isEdit = !!dv;
-  
+
   // 💡 TỰ ĐỘNG LÀM SẠCH NGÀY THÁNG TRƯỚC KHI ĐƯA VÀO FORM STATE
-  const initialForm = dv 
+  const initialForm = dv
     ? {
-        ...dv,
-        ngaySinh: formatDateForInput(dv.ngaySinh),
-        ngayVaoDoan: formatDateForInput(dv.ngayVaoDoan)
-      }
+      ...dv,
+      ngaySinh: formatDateForInput(dv.ngaySinh),
+      ngayVaoDoan: formatDateForInput(dv.ngayVaoDoan)
+    }
     : {
-        maDV:'', hoTen:'', ngaySinh:'', gioiTinh:'Nam', danToc:'Kinh', tonGiao:'Không',
-        SDT:'', maChiDoan:'', ngayVaoDoan:'', noiVaoDoan:'', trangThaiSH:'Đang sinh hoạt',
-        chucVu:'Đoàn viên', cccd:'', queQuan:'', diaChiThuongTru:''
-      };
+      maDV: '', hoTen: '', ngaySinh: '', gioiTinh: 'Nam', danToc: 'Kinh', tonGiao: 'Không',
+      SDT: '', maChiDoan: '', ngayVaoDoan: '', noiVaoDoan: '', trangThaiSH: 'Đang sinh hoạt',
+      chucVu: 'Đoàn viên', cccd: '', queQuan: '', diaChiThuongTru: ''
+    };
 
   const [form, setForm] = useState(initialForm); // Gán dữ liệu sạch vào đây
   const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
 
 
   const handleSubmit = async e => {
@@ -64,9 +67,9 @@ const Modal = ({ dv, onClose, onSaved, chiDoans }) => {
     setSaving(true);
     try {
       if (isEdit) await axios.put(`${API_URL}/doan-vien/${form.maDV}`, form, { headers: getHeaders() });
-      else        await axios.post(`${API_URL}/doan-vien`, form, { headers: getHeaders() });
+      else await axios.post(`${API_URL}/doan-vien`, form, { headers: getHeaders() });
       onSaved();
-    } catch(err) { setError(err.response?.data?.message || 'Có lỗi xảy ra'); }
+    } catch (err) { setError(err.response?.data?.message || 'Có lỗi xảy ra'); }
     finally { setSaving(false); }
   };
 
@@ -74,7 +77,7 @@ const Modal = ({ dv, onClose, onSaved, chiDoans }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden" onClick={e=>e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-gradient-to-r from-[#004581] to-[#0066bb] px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -103,15 +106,15 @@ const Modal = ({ dv, onClose, onSaved, chiDoans }) => {
             </p>
             <div className="grid grid-cols-2 gap-4 mb-5">
               <F label="Mã Đoàn viên" name="maDV" required {...fp}>
-                <input disabled={isEdit} value={form.maDV||''} onChange={e=>setForm(p=>({...p,maDV:e.target.value}))}
-                  className={`w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#004581] focus:ring-2 focus:ring-[#004581]/10 ${isEdit?'bg-gray-100 text-gray-500':'bg-gray-50 focus:bg-white'} transition-all`} />
+                <input disabled={isEdit} value={form.maDV || ''} onChange={e => setForm(p => ({ ...p, maDV: e.target.value }))}
+                  className={`w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#004581] focus:ring-2 focus:ring-[#004581]/10 ${isEdit ? 'bg-gray-100 text-gray-500' : 'bg-gray-50 focus:bg-white'} transition-all`} />
               </F>
               <F label="Họ và tên" name="hoTen" required {...fp} />
               <F label="Ngày sinh" name="ngaySinh" type="date" {...fp} />
               <F label="Giới tính" name="gioiTinh" {...fp}>
-                <select value={form.gioiTinh||'Nam'} onChange={e=>setForm(p=>({...p,gioiTinh:e.target.value}))}
+                <select value={form.gioiTinh || 'Nam'} onChange={e => setForm(p => ({ ...p, gioiTinh: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#004581] bg-gray-50 focus:bg-white transition-all text-gray-800">
-                  {['Nam','Nữ','Khác'].map(g=><option key={g}>{g}</option>)}
+                  {['Nam', 'Nữ', 'Khác'].map(g => <option key={g}>{g}</option>)}
                 </select>
               </F>
               <F label="CCCD" name="cccd" {...fp} />
@@ -125,24 +128,30 @@ const Modal = ({ dv, onClose, onSaved, chiDoans }) => {
             </p>
             <div className="grid grid-cols-2 gap-4 mb-5">
               <F label="Chi đoàn" name="maChiDoan" {...fp}>
-                <select value={form.maChiDoan||''} onChange={e=>setForm(p=>({...p,maChiDoan:e.target.value}))}
+                <select value={form.maChiDoan || ''} onChange={e => setForm(p => ({ ...p, maChiDoan: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#004581] bg-gray-50 focus:bg-white transition-all text-gray-800">
                   <option value="">-- Chọn chi đoàn --</option>
-                  {chiDoans.map(cd=><option key={cd.maChiDoan} value={cd.maChiDoan}>{cd.tenChiDoan}</option>)}
+                  {chiDoans.map(cd => <option key={cd.maChiDoan} value={cd.maChiDoan}>{cd.tenChiDoan}</option>)}
                 </select>
               </F>
               <F label="Chức vụ" name="chucVu" {...fp}>
-                <select value={form.chucVu||'Đoàn viên'} onChange={e=>setForm(p=>({...p,chucVu:e.target.value}))}
+                <select value={form.chucVu || 'Đoàn viên'} onChange={e => setForm(p => ({ ...p, chucVu: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#004581] bg-gray-50 focus:bg-white transition-all text-gray-800">
-                  {['Đoàn viên','Bí thư','Phó bí thư','Ủy viên BCH'].map(c=><option key={c}>{c}</option>)}
+                  {['Đoàn viên', 'Bí thư', 'Phó bí thư', 'Ủy viên BCH'].map(c => <option key={c}>{c}</option>)}
                 </select>
               </F>
               <F label="Ngày vào Đoàn" name="ngayVaoDoan" type="date" {...fp} />
               <F label="Nơi vào Đoàn" name="noiVaoDoan" {...fp} />
               <F label="Trạng thái" name="trangThaiSH" {...fp}>
-                <select value={form.trangThaiSH||'Đang sinh hoạt'} onChange={e=>setForm(p=>({...p,trangThaiSH:e.target.value}))}
+                <select value={form.trangThaiSH || 'Đang sinh hoạt'} onChange={e => setForm(p => ({ ...p, trangThaiSH: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#004581] bg-gray-50 focus:bg-white transition-all text-gray-800">
-                  {['Đang sinh hoạt','Đã rút hồ sơ'].map(s=><option key={s}>{s}</option>)}
+                  {[
+                    'Đang sinh hoạt',
+                    'Đã rút hồ sơ',
+                    'Đã tốt nghiệp'
+                  ].map(s => (
+                    <option key={s}>{s}</option>
+                  ))}
                 </select>
               </F>
             </div>
@@ -163,7 +172,7 @@ const Modal = ({ dv, onClose, onSaved, chiDoans }) => {
               <button type="submit" disabled={saving}
                 className="px-6 py-2.5 bg-gradient-to-r from-[#004581] to-[#0066bb] text-white rounded-xl text-sm font-bold hover:shadow-lg disabled:opacity-50 flex items-center gap-2 transition-all">
                 {saving && <span className="material-symbols-outlined text-sm animate-spin">refresh</span>}
-                <span className="material-symbols-outlined text-sm fill">{isEdit?'save':'person_add'}</span>
+                <span className="material-symbols-outlined text-sm fill">{isEdit ? 'save' : 'person_add'}</span>
                 {saving ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Thêm mới'}
               </button>
             </div>
@@ -175,21 +184,21 @@ const Modal = ({ dv, onClose, onSaved, chiDoans }) => {
 };
 
 const AdminDoanVien = () => {
-  const [data, setData]         = useState([]);
+  const [data, setData] = useState([]);
   const [chiDoans, setChiDoans] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [search, setSearch]     = useState('');
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [filterCD, setFilterCD] = useState('');
   const [filterTT, setFilterTT] = useState('');
-  const [modal, setModal]       = useState(null);
-  const [page, setPage]         = useState(1);
+  const [modal, setModal] = useState(null);
+  const [page, setPage] = useState(1);
   const PER_PAGE = 10;
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (search)   params.append('search', search);
+      if (search) params.append('search', search);
       if (filterCD) params.append('maChiDoan', filterCD);
       if (filterTT) params.append('trangThaiSH', filterTT);
       const [dvRes] = await Promise.all([
@@ -197,24 +206,24 @@ const AdminDoanVien = () => {
       ]);
       setData(dvRes.data.data || []);
       setPage(1);
-    } catch(err) { console.error(err); }
+    } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }, [search, filterCD, filterTT]);
 
   useEffect(() => {
     axios.get(`${API_URL}/doan-vien`, { headers: getHeaders() }).then(r => {
-      const cds = [...new Map((r.data.data||[]).filter(d=>d.maChiDoan).map(d=>[d.maChiDoan,{maChiDoan:d.maChiDoan,tenChiDoan:d.tenChiDoan||d.maChiDoan}])).values()];
+      const cds = [...new Map((r.data.data || []).filter(d => d.maChiDoan).map(d => [d.maChiDoan, { maChiDoan: d.maChiDoan, tenChiDoan: d.tenChiDoan || d.maChiDoan }])).values()];
       setChiDoans(cds);
-    }).catch(()=>{});
+    }).catch(() => { });
     fetchData();
   }, [fetchData]);
 
   const totalPages = Math.ceil(data.length / PER_PAGE);
-  const pageData   = data.slice((page-1)*PER_PAGE, page*PER_PAGE);
-  const countActive = data.filter(d=>d.trangThaiSH==='Đang sinh hoạt').length;
+  const pageData = data.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const countActive = data.filter(d => d.trangThaiSH === 'Đang sinh hoạt').length;
 
   return (
-    <div className="flex flex-col gap-5" style={{fontFamily:"'Inter',sans-serif"}}>
+    <div className="flex flex-col gap-5" style={{ fontFamily: "'Inter',sans-serif" }}>
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -235,21 +244,22 @@ const AdminDoanVien = () => {
         <div className="relative flex-1 min-w-52">
           <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
           <input className="w-full border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-[#004581] focus:ring-2 focus:ring-[#004581]/10 bg-gray-50 focus:bg-white transition-all"
-            placeholder="Tìm tên, mã đoàn viên..." value={search} onChange={e=>setSearch(e.target.value)} />
+            placeholder="Tìm tên, mã đoàn viên..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select value={filterCD} onChange={e=>setFilterCD(e.target.value)}
+        <select value={filterCD} onChange={e => setFilterCD(e.target.value)}
           className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#004581] text-gray-600 bg-gray-50 focus:bg-white transition-all">
           <option value="">Tất cả chi đoàn</option>
-          {chiDoans.map(cd=><option key={cd.maChiDoan} value={cd.maChiDoan}>{cd.tenChiDoan}</option>)}
+          {chiDoans.map(cd => <option key={cd.maChiDoan} value={cd.maChiDoan}>{cd.tenChiDoan}</option>)}
         </select>
-        <select value={filterTT} onChange={e=>setFilterTT(e.target.value)}
+        <select value={filterTT} onChange={e => setFilterTT(e.target.value)}
           className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#004581] text-gray-600 bg-gray-50 focus:bg-white transition-all">
           <option value="">Tất cả trạng thái</option>
           <option value="Đang sinh hoạt">Đang sinh hoạt</option>
           <option value="Đã rút hồ sơ">Đã rút hồ sơ</option>
+          <option value="Đã tốt nghiệp">Đã tốt nghiệp</option>
         </select>
-        {(filterCD||filterTT||search) && (
-          <button onClick={()=>{setSearch('');setFilterCD('');setFilterTT('');}}
+        {(filterCD || filterTT || search) && (
+          <button onClick={() => { setSearch(''); setFilterCD(''); setFilterTT(''); }}
             className="px-3 py-2.5 border border-gray-200 rounded-xl text-xs text-gray-500 hover:bg-gray-50 flex items-center gap-1 transition-all">
             <span className="material-symbols-outlined text-sm">close</span>Xóa lọc
           </button>
@@ -290,7 +300,7 @@ const AdminDoanVien = () => {
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${avatarColor(dv.hoTen)} flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm`}>
-                        {dv.hoTen?.split(' ').pop()?.[0]||'?'}
+                        {dv.hoTen?.split(' ').pop()?.[0] || '?'}
                       </div>
                       <div>
                         <p className="font-bold text-gray-900 group-hover:text-[#004581] transition-colors">{dv.hoTen}</p>
@@ -299,27 +309,27 @@ const AdminDoanVien = () => {
                     </div>
                   </td>
                   <td className="px-5 py-3.5">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${dv.gioiTinh==='Nam'?'bg-blue-50 text-blue-600':dv.gioiTinh==='Nữ'?'bg-pink-50 text-pink-600':'bg-gray-50 text-gray-500'}`}>
-                      {dv.gioiTinh||'—'}
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${dv.gioiTinh === 'Nam' ? 'bg-blue-50 text-blue-600' : dv.gioiTinh === 'Nữ' ? 'bg-pink-50 text-pink-600' : 'bg-gray-50 text-gray-500'}`}>
+                      {dv.gioiTinh || '—'}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-sm text-gray-600 font-medium">{dv.tenChiDoan||'—'}</td>
+                  <td className="px-5 py-3.5 text-sm text-gray-600 font-medium">{dv.tenChiDoan || '—'}</td>
                   <td className="px-5 py-3.5">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${dv.chucVu==='Bí thư'?'bg-purple-50 text-purple-700':dv.chucVu==='Phó bí thư'?'bg-indigo-50 text-indigo-700':'bg-gray-50 text-gray-500'}`}>
-                      {dv.chucVu||'—'}
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${dv.chucVu === 'Bí thư' ? 'bg-purple-50 text-purple-700' : dv.chucVu === 'Phó bí thư' ? 'bg-indigo-50 text-indigo-700' : 'bg-gray-50 text-gray-500'}`}>
+                      {dv.chucVu || '—'}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-sm text-gray-500">
                     {dv.ngayVaoDoan ? new Date(dv.ngayVaoDoan).toLocaleDateString('vi-VN') : '—'}
                   </td>
                   <td className="px-5 py-3.5">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${BADGE[dv.trangThaiSH]||'bg-gray-50 text-gray-500'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${DOT[dv.trangThaiSH]||'bg-gray-400'}`} />
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${BADGE[dv.trangThaiSH] || 'bg-gray-50 text-gray-500'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${DOT[dv.trangThaiSH] || 'bg-gray-400'}`} />
                       {dv.trangThaiSH}
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <button onClick={()=>setModal(dv)}
+                    <button onClick={() => setModal(dv)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:border-[#004581] hover:text-[#004581] hover:bg-blue-50 transition-all">
                       <span className="material-symbols-outlined text-sm">edit</span>Sửa
                     </button>
@@ -338,17 +348,17 @@ const AdminDoanVien = () => {
               <span className="font-bold text-gray-700">{data.length}</span> bản ghi
             </p>
             <div className="flex items-center gap-1">
-              <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                 className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:bg-white hover:border-gray-300 disabled:opacity-30 transition-all">
                 <span className="material-symbols-outlined text-sm">chevron_left</span>
               </button>
-              {Array.from({length:Math.min(5,totalPages)},(_,i)=>i+1).map(n=>(
-                <button key={n} onClick={()=>setPage(n)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${page===n?'bg-[#004581] text-white shadow-md':'border border-gray-200 text-gray-600 hover:bg-white hover:border-gray-300'}`}>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map(n => (
+                <button key={n} onClick={() => setPage(n)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${page === n ? 'bg-[#004581] text-white shadow-md' : 'border border-gray-200 text-gray-600 hover:bg-white hover:border-gray-300'}`}>
                   {n}
                 </button>
               ))}
-              <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
                 className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:bg-white hover:border-gray-300 disabled:opacity-30 transition-all">
                 <span className="material-symbols-outlined text-sm">chevron_right</span>
               </button>
@@ -359,10 +369,10 @@ const AdminDoanVien = () => {
 
       {modal && (
         <Modal
-          dv={modal==='add'?null:modal}
+          dv={modal === 'add' ? null : modal}
           chiDoans={chiDoans}
-          onClose={()=>setModal(null)}
-          onSaved={()=>{setModal(null);fetchData();}}
+          onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); fetchData(); }}
         />
       )}
     </div>
