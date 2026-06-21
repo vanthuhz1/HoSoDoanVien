@@ -3,7 +3,12 @@ const { getConnection } = require('../config/database');
 // Lấy maKhoa từ user đang đăng nhập
 const getKhoaFromUser = async (idUser) => {
   const pool = await getConnection();
-  // Bí thư Đoàn khoa: liên kết qua TaiKhoan -> DoanVien -> ChiDoan -> Khoa
+  
+  // 1. Kiểm tra xem tài khoản có liên kết maKhoa trực tiếp không (đối với Đoàn khoa không có maDV)
+  const [[directRow]] = await pool.query('SELECT maKhoa FROM TaiKhoan WHERE idUser = ?', [idUser]);
+  if (directRow?.maKhoa) return directRow.maKhoa;
+
+  // 2. Fallback: liên kết qua TaiKhoan -> DoanVien -> ChiDoan -> Khoa
   const [[row]] = await pool.query(
     `SELECT cd.maKhoa FROM TaiKhoan tk
      JOIN DoanVien dv ON tk.maDV = dv.maDV
